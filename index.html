@@ -450,12 +450,34 @@
       </div>
 
       <button class="big-button" id="go-btn" disabled>▶ Start Race!</button>
+      <button class="big-button" id="settings-btn" style="background: linear-gradient(to bottom, #7EB3FF, #5A8FD4); color: white; margin-top: 10px;">⚙ Settings</button>
+
+      <!-- Settings Panel (hidden by default) -->
+      <div id="settings-panel" style="display:none; background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-top: 15px; width: 90%; max-width: 500px; text-align: center;">
+        <h2 style="color: #7EB3FF; margin-bottom: 15px;">⚙ Settings</h2>
+        <div style="margin-bottom: 15px; text-align: left;">
+          <label style="color: white; font-size: 16px; font-weight: bold; display: block; margin-bottom: 8px;">Volume</label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="color: #aaa; font-size: 18px;">🔇</span>
+            <input type="range" id="volume-slider" min="0" max="100" value="100" style="flex: 1; cursor: pointer; accent-color: #7EB3FF;">
+            <span style="color: #aaa; font-size: 18px;">🔊</span>
+            <span id="volume-label" style="color: #FFD93D; font-weight: bold; min-width: 40px; text-align: right;">100%</span>
+          </div>
+        </div>
+        <button class="big-button" id="close-settings-btn" style="background: linear-gradient(to bottom, #888, #666); color: white; margin-top: 10px; font-size: 18px; padding: 10px 30px;">✖ Close</button>
+      </div>
+
       <button class="big-button" id="upgrades-btn" style="background: linear-gradient(to bottom, #C084FC, #9333EA); color: white; margin-top: 10px;">⬆ Upgrades</button>
       <p class="sub">Tap SPACE or CLICK for speed boosts — 15 seconds!</p>
 
       <!-- Upgrades Panel (hidden by default) -->
       <div id="upgrades-panel" style="display:none; background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-top: 15px; width: 90%; max-width: 500px; text-align: center;">
         <h2 style="color: #C084FC; margin-bottom: 15px;">⬆ Upgrades</h2>
+        <div style="color: #ccc; font-size: 13px; margin-bottom: 15px; line-height: 1.5; text-align: left; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 12px;">
+          <p style="margin: 0 0 6px 0; color: #FFD93D; font-weight: bold;">How Upgrades Work:</p>
+          <p style="margin: 0 0 4px 0;">Win races to earn wins. Spend wins to buy upgrades that give you an edge!</p>
+          <p style="margin: 0 0 4px 0;">Click an owned upgrade to toggle it <span style="color:#6BCB77;">ON</span> or <span style="color:#FF6B6B;">OFF</span>. Only enabled upgrades take effect during races.</p>
+        </div>
         <div class="picker-grid" id="upgrade-grid"></div>
         <button class="big-button" id="close-upgrades-btn" style="background: linear-gradient(to bottom, #888, #666); color: white; margin-top: 10px; font-size: 18px; padding: 10px 30px;">✖ Close</button>
       </div>
@@ -504,6 +526,8 @@
       { name: 'Cosmo',   col: 1, row: 1, bgPos: '100% 50%' },
       { name: 'Zappy',   col: 0, row: 2, bgPos: '0% 100%' },
       { name: 'Boom',    col: 1, row: 2, bgPos: '100% 100%' },
+      { name: 'Rex',     emoji: '🦖', unlockId: 'char1' },
+      { name: 'Bolt',    emoji: '⚡', unlockId: 'char2' },
     ];
 
     // Biomes are in a 3-col x 2-row sprite sheet (biomes.PNG)
@@ -515,6 +539,7 @@
       { name: 'Lava World',     bgPos: '0% 100%' },
       { name: 'Ocean Base',     bgPos: '50% 100%' },
       { name: 'Crystal Cave',   bgPos: '100% 100%' },
+      { name: 'Racecar Roadway', customBg: true, unlockId: 'biome1' },
     ];
 
     const CHAR_SPRITE  = 'Characters_Biomes/characters_portraits.png';
@@ -524,35 +549,69 @@
     let selectedChar  = null;  // index into CHARACTERS
     let selectedBiome = null;  // index into BIOMES
 
-    // ===== BUILD PICKER CARDS =====
-    CHARACTERS.forEach((char, i) => {
-      const card = document.createElement('div');
-      card.className = 'pick-card char-card';
-      card.style.backgroundPosition = char.bgPos;
-      card.innerHTML = '<div class="card-label">' + char.name + '</div>';
-      card.addEventListener('click', function() {
-        // Deselect others
-        charGrid.querySelectorAll('.pick-card').forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
-        selectedChar = i;
-        checkReady();
-      });
-      charGrid.appendChild(card);
-    });
+    // Track purchased upgrades and race wins as currency
+    let raceWins = 0;
+    let purchasedUpgrades = [];
+    let enabledUpgrades = [];   // upgrades that are currently turned on
 
-    BIOMES.forEach((biome, i) => {
-      const card = document.createElement('div');
-      card.className = 'pick-card biome-card';
-      card.style.backgroundPosition = biome.bgPos;
-      card.innerHTML = '<div class="card-label">' + biome.name + '</div>';
-      card.addEventListener('click', function() {
-        biomeGrid.querySelectorAll('.pick-card').forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
-        selectedBiome = i;
-        checkReady();
+    // ===== BUILD PICKER CARDS =====
+    function buildCharGrid() {
+      charGrid.innerHTML = '';
+      CHARACTERS.forEach((char, i) => {
+        // Skip locked unlockable characters
+        if (char.unlockId && enabledUpgrades.indexOf(char.unlockId) === -1) return;
+
+        const card = document.createElement('div');
+        if (char.emoji) {
+          // Emoji-based unlockable character
+          card.className = 'pick-card';
+          card.style.cssText = 'background: rgba(50,50,50,0.8); display: flex; align-items: center; justify-content: center; font-size: 48px;';
+          card.innerHTML = char.emoji + '<div class="card-label">' + char.name + '</div>';
+        } else {
+          card.className = 'pick-card char-card';
+          card.style.backgroundPosition = char.bgPos;
+          card.innerHTML = '<div class="card-label">' + char.name + '</div>';
+        }
+        if (selectedChar === i) card.classList.add('selected');
+        card.addEventListener('click', function() {
+          charGrid.querySelectorAll('.pick-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedChar = i;
+          checkReady();
+        });
+        charGrid.appendChild(card);
       });
-      biomeGrid.appendChild(card);
-    });
+    }
+    buildCharGrid();
+
+    function buildBiomeGrid() {
+      biomeGrid.innerHTML = '';
+      BIOMES.forEach((biome, i) => {
+        // Skip locked unlockable biomes
+        if (biome.unlockId && enabledUpgrades.indexOf(biome.unlockId) === -1) return;
+
+        const card = document.createElement('div');
+        if (biome.customBg) {
+          // Custom styled card for non-sprite biomes
+          card.className = 'pick-card';
+          card.style.cssText = 'background: linear-gradient(to bottom, #333, #555, #333); display: flex; align-items: center; justify-content: center;';
+          card.innerHTML = '<div style="font-size: 36px;">🏎️</div><div class="card-label">' + biome.name + '</div>';
+        } else {
+          card.className = 'pick-card biome-card';
+          card.style.backgroundPosition = biome.bgPos;
+          card.innerHTML = '<div class="card-label">' + biome.name + '</div>';
+        }
+        if (selectedBiome === i) card.classList.add('selected');
+        card.addEventListener('click', function() {
+          biomeGrid.querySelectorAll('.pick-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedBiome = i;
+          checkReady();
+        });
+        biomeGrid.appendChild(card);
+      });
+    }
+    buildBiomeGrid();
 
     // Difficulty buttons
     document.querySelectorAll('.diff-btn').forEach(function(btn) {
@@ -620,9 +679,101 @@
     let timeLeft     = RACE_TIME;
     let bestDist     = 0;
     let gameRunning  = false;
+    let biomeMusic   = null;
+    let homeMusic    = null;
+    let racingPhase  = false;
+    let gameVolume   = 1.0;
+
+    // ===== SETTINGS =====
+    const settingsBtn      = document.getElementById('settings-btn');
+    const settingsPanel    = document.getElementById('settings-panel');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const volumeSlider     = document.getElementById('volume-slider');
+    const volumeLabel      = document.getElementById('volume-label');
+
+    settingsBtn.addEventListener('click', function() {
+      settingsPanel.style.display = 'block';
+      settingsBtn.style.display = 'none';
+    });
+    closeSettingsBtn.addEventListener('click', function() {
+      settingsPanel.style.display = 'none';
+      settingsBtn.style.display = '';
+    });
+
+    volumeSlider.addEventListener('input', function() {
+      gameVolume = volumeSlider.value / 100;
+      volumeLabel.textContent = volumeSlider.value + '%';
+      // Apply to any currently playing audio
+      if (homeMusic) homeMusic.volume = gameVolume;
+      if (biomeMusic) biomeMusic.volume = gameVolume;
+    });
+
+    // Helper to apply volume to any new audio
+    function applyVolume(audio) {
+      audio.volume = gameVolume;
+      return audio;
+    }
+
+    // Click sound on any click
+    const clickSound = new Audio('Sounds/click.mp3');
+    document.addEventListener('click', function() {
+      clickSound.volume = gameVolume;
+      clickSound.currentTime = 0;
+      clickSound.play().catch(function() {});
+    });
+
+    // Start home screen music
+    function startHomeMusic() {
+      if (racingPhase) return;
+      if (homeMusic && !homeMusic.paused) return;
+      if (!homeMusic) {
+        homeMusic = new Audio('Sounds/home_screen.wav');
+        homeMusic.loop = true;
+        homeMusic.volume = gameVolume;
+      }
+      homeMusic.play().catch(function() {});
+    }
+    function stopHomeMusic() {
+      if (homeMusic) { homeMusic.pause(); homeMusic = null; }
+    }
+
+    // Start home music as soon as user interacts with the page
+    startHomeMusic();
+    ['click', 'keydown', 'touchstart'].forEach(function(evt) {
+      document.addEventListener(evt, function() { startHomeMusic(); }, { once: true });
+    });
     let lastFrame    = 0;
     let worldOffset  = 0;
     let spaceHeld    = false;
+
+    // ===== OBSTACLE SYSTEM (Racecar Roadway) =====
+    let obstacles = [];
+    let obstacleTimer = 0;
+    let playerLane = 0;  // 0 = bottom lane, up to LANE_COUNT-1
+    const OBSTACLE_EMOJIS = ['🛢️', '🚧', '⚠️', '🔶', '🪨'];
+
+    function spawnObstacle() {
+      var emoji = OBSTACLE_EMOJIS[Math.floor(Math.random() * OBSTACLE_EMOJIS.length)];
+      var lane = Math.floor(Math.random() * LANE_COUNT);
+      var el = document.createElement('div');
+      el.style.cssText = 'position:absolute; font-size:50px; z-index:6; transition: none; pointer-events:none;';
+      el.style.bottom = laneBottom(lane) + '%';
+      el.style.left = (window.innerWidth + 60) + 'px';
+      el.textContent = emoji;
+      game.appendChild(el);
+      obstacles.push({ el: el, x: window.innerWidth + 60, lane: lane, hitPlayer: false, hitNpcs: [] });
+    }
+
+    function cleanupObstacles() {
+      obstacles.forEach(function(o) { o.el.remove(); });
+      obstacles = [];
+      obstacleTimer = 0;
+      playerLane = 0;
+    }
+
+    function isRoadway() {
+      return BIOMES[selectedBiome] && BIOMES[selectedBiome].name === 'Racecar Roadway';
+    }
 
     let groundLines = [];
     let speedLines  = [];
@@ -682,10 +833,16 @@
     function createPlayer() {
       if (playerEl) playerEl.remove();
       playerEl = document.createElement('div');
-      playerEl.className = 'runner';
-      // Crop the selected character from the sprite sheet
-      playerEl.style.backgroundImage = "url('" + CHAR_SPRITE + "')";
-      playerEl.style.backgroundPosition = CHARACTERS[selectedChar].bgPos;
+      var charData = CHARACTERS[selectedChar];
+      if (charData.emoji) {
+        // Emoji-based character (unlockable)
+        playerEl.className = 'runner-emoji';
+        playerEl.textContent = charData.emoji;
+      } else {
+        playerEl.className = 'runner';
+        playerEl.style.backgroundImage = "url('" + CHAR_SPRITE + "')";
+        playerEl.style.backgroundPosition = charData.bgPos;
+      }
       playerEl.style.bottom = laneBottom(0) + '%';
       playerEl.style.left = '80px';
       game.appendChild(playerEl);
@@ -716,16 +873,26 @@
           el, labelEl: label,
           dist: 0, speed: 0, targetSpeed: 0,
           def, nextChange: 0,
+          lane: i + 1, // each NPC starts in their own lane
+          laneChangeTimer: 0,
         });
       });
     }
 
     // ===== APPLY BIOME BACKGROUND =====
     function applyBiome() {
-      biomeBg.style.backgroundImage = "url('" + BIOME_SPRITE + "')";
-      // Crop the selected biome panel: 300% 200% to show one cell
-      biomeBg.style.backgroundSize = '300% 200%';
-      biomeBg.style.backgroundPosition = BIOMES[selectedBiome].bgPos;
+      var biome = BIOMES[selectedBiome];
+      if (biome.customBg) {
+        // Racecar Roadway — dark asphalt with road markings
+        biomeBg.style.backgroundImage = 'none';
+        biomeBg.style.background = 'linear-gradient(to bottom, #1a1a2e 0%, #2d2d44 30%, #555 32%, #444 34%, #333 36%, #444 100%)';
+        biomeBg.style.backgroundSize = 'cover';
+      } else {
+        biomeBg.style.background = 'none';
+        biomeBg.style.backgroundImage = "url('" + BIOME_SPRITE + "')";
+        biomeBg.style.backgroundSize = '300% 200%';
+        biomeBg.style.backgroundPosition = biome.bgPos;
+      }
       biomeBg.style.display = 'block';
     }
 
@@ -743,6 +910,8 @@
 
     // ===== INITIATE START (countdown) =====
     function initiateStart() {
+      racingPhase = true;
+      stopHomeMusic();
       // Read selected difficulty
       var diffBtn = document.querySelector('.diff-btn.selected');
       if (diffBtn) selectedDifficulty = diffBtn.getAttribute('data-diff');
@@ -758,26 +927,39 @@
       createPlayer();
       createNPCs();
 
-      countdownEl.style.display = 'flex';
-      let count = 3;
-      countdownEl.innerHTML = '<span>' + count + '</span>';
+      // Play sound 2 seconds before visuals start
+      var SOUND_HEAD_START = 2000; // ms sound plays before countdown visuals
+      var BEEP2 = 670;    // ms when 2nd beep hits (relative to visuals start)
+      var BEEP3 = 1340;   // ms when 3rd beep hits
+      var BEEP4 = 2010;   // ms when long beep (GO!) hits
+      var RACE  = 2700;   // ms when race starts
 
-      // Play countdown sound
-      const countdownSound = new Audio('Sounds/start_of_race_1_2_3_go.wav');
-      countdownSound.play().catch(function() {});
-
-      const countInterval = setInterval(() => {
-        count--;
-        if (count > 0) {
-          countdownEl.innerHTML = '<span>' + count + '</span>';
-        } else if (count === 0) {
-          countdownEl.innerHTML = '<span>GO!</span>';
-        } else {
-          clearInterval(countInterval);
+      const countdownSound = applyVolume(new Audio('Sounds/start_of_race_1_2_3_go.wav'));
+      // Start sound first, then show visuals after head start
+      countdownSound.play().then(function() {
+        setTimeout(function() {
+          countdownEl.style.display = 'flex';
+          countdownEl.innerHTML = '<span>3</span>';
+          setTimeout(function() { countdownEl.innerHTML = '<span>2</span>'; }, BEEP2);
+          setTimeout(function() { countdownEl.innerHTML = '<span>1</span>'; }, BEEP3);
+          setTimeout(function() { countdownEl.innerHTML = '<span>GO!</span>'; }, BEEP4);
+          setTimeout(function() {
+            countdownEl.style.display = 'none';
+            startRace();
+          }, RACE);
+        }, SOUND_HEAD_START);
+      }).catch(function() {
+        // Fallback if audio blocked — just run visuals anyway
+        countdownEl.style.display = 'flex';
+        countdownEl.innerHTML = '<span>3</span>';
+        setTimeout(function() { countdownEl.innerHTML = '<span>2</span>'; }, BEEP2);
+        setTimeout(function() { countdownEl.innerHTML = '<span>1</span>'; }, BEEP3);
+        setTimeout(function() { countdownEl.innerHTML = '<span>GO!</span>'; }, BEEP4);
+        setTimeout(function() {
           countdownEl.style.display = 'none';
           startRace();
-        }
-      }, 700);
+        }, RACE);
+      });
     }
 
     // ===== START THE RACE =====
@@ -791,6 +973,7 @@
       worldOffset  = 0;
       gameRunning  = true;
       spaceHeld    = false;
+      playerLane   = 0;
 
       npcs.forEach(n => {
         n.dist  = 0;
@@ -808,6 +991,30 @@
       positionBadge.style.display = 'block';
 
       npcs.forEach(n => n.el.classList.add('running'));
+
+      // Play biome music
+      var biomeName = BIOMES[selectedBiome].name;
+      if (biomeName === 'Alien Desert') {
+        biomeMusic = applyVolume(new Audio('Sounds/alien_desert_biome.wav'));
+        biomeMusic.loop = true;
+        biomeMusic.play().catch(function() {});
+      } else if (biomeName === 'Crystal Cave') {
+        biomeMusic = applyVolume(new Audio('Sounds/Crystal_Cave_biome.mp3'));
+        biomeMusic.loop = true;
+        biomeMusic.play().catch(function() {});
+      } else if (biomeName === 'Racecar Roadway') {
+        biomeMusic = applyVolume(new Audio('Sounds/racecar_runway_biome.flac'));
+        biomeMusic.loop = true;
+        biomeMusic.play().catch(function() {});
+      } else if (biomeName === 'Lava World' || biomeName === 'Volcano Rain') {
+        biomeMusic = applyVolume(new Audio('Sounds/volcano_biome.mp3'));
+        biomeMusic.loop = true;
+        biomeMusic.play().catch(function() {});
+      } else if (biomeName === 'Ocean Base' || biomeName === 'Tropical Beach') {
+        biomeMusic = applyVolume(new Audio('Sounds/water_biomes.mp3'));
+        biomeMusic.loop = true;
+        biomeMusic.play().catch(function() {});
+      }
 
       lastFrame = performance.now();
       requestAnimationFrame(gameLoop);
@@ -851,7 +1058,20 @@
       const playerSpeed = playerBaseSpeed + playerBoost;
       playerDist += playerSpeed * dt;
 
-      // --- World scrolling ---
+      // --- Racer screen positioning (left-to-right across screen) ---
+      // Find the max expected distance for this race to map positions
+      var maxRaceDist = 0;
+      npcs.forEach(n => { if (n.finalDist > maxRaceDist) maxRaceDist = n.finalDist; });
+      maxRaceDist *= 1.1; // add 10% headroom so finish line isn't at the very edge
+      const startX = 60;  // left edge start position (px)
+      const endX = window.innerWidth - 60; // right edge finish position (px)
+      const trackWidth = endX - startX;
+
+      // Position player on screen based on distance
+      const playerScreenX = startX + (playerDist / maxRaceDist) * trackWidth;
+      playerEl.style.left = Math.min(playerScreenX, endX) + 'px';
+
+      // --- World scrolling (background elements still scroll for visual effect) ---
       const prevOffset = worldOffset;
       worldOffset = playerDist * 2.5;
       const scrollDelta = worldOffset - prevOffset;
@@ -880,20 +1100,16 @@
       const progress = Math.min(elapsed / RACE_TIME, 1); // 0→1 over race
 
       npcs.forEach(n => {
-        // Speed ramps from 20% to 100% of avgSpd linearly over the race
-        // With this ramp, total distance = avgSpd * T * (0.20+1.0)/2 = avgSpd * T * 0.60
-        // So we scale avgSpd up by 1/0.60 to compensate
         const correctedAvg = n.avgSpd / 0.60;
         const speedPct = 0.20 + 0.80 * progress;
-        // Add small wobble so NPCs don't move robotically
         const wobble = 1 + (Math.sin(elapsed * 3 + npcs.indexOf(n) * 2) * 0.03);
         n.speed = correctedAvg * speedPct * wobble;
 
         n.dist += n.speed * dt;
 
-        const relativePixels = (n.dist - playerDist) * 2.5;
-        const screenX = 80 + relativePixels;
-        const clampedX = Math.max(-60, Math.min(window.innerWidth + 10, screenX));
+        // Position NPC on screen based on their distance
+        const npcScreenX = startX + (n.dist / maxRaceDist) * trackWidth;
+        const clampedX = Math.max(-60, Math.min(endX, npcScreenX));
         n.el.style.left = clampedX + 'px';
         n.labelEl.style.left = clampedX + 'px';
 
@@ -970,6 +1186,7 @@
     // ===== END GAME =====
     function endGame(place, placeText) {
       gameRunning = false;
+      if (biomeMusic) { biomeMusic.pause(); biomeMusic = null; }
 
       playerEl.classList.remove('running', 'boosting');
       npcs.forEach(n => n.el.classList.remove('running'));
@@ -982,10 +1199,27 @@
       const isNewBest = dist > bestDist;
       if (isNewBest) bestDist = dist;
 
+      // Auto-unlock distance-based upgrades
+      UPGRADES.forEach(function(upg) {
+        if (upg.unlockDist && bestDist >= upg.unlockDist && purchasedUpgrades.indexOf(upg.id) === -1) {
+          purchasedUpgrades.push(upg.id);
+          enabledUpgrades.push(upg.id);
+          var unlockMsg = document.createElement('div');
+          unlockMsg.style.cssText = 'position:fixed; top:12%; left:50%; transform:translateX(-50%); color:#7EB3FF; font-size:32px; font-weight:bold; z-index:9999; text-shadow:0 0 20px rgba(126,179,255,0.8);';
+          unlockMsg.textContent = '🏎️ Racecar Roadway Unlocked!';
+          document.body.appendChild(unlockMsg);
+          setTimeout(function() { unlockMsg.remove(); }, 3000);
+        }
+      });
+
       bestEl.textContent = '🏆 Best: ' + bestDist + 'm';
 
       finalPlaceEl.textContent = placeText + ' Place!';
       finalPlaceEl.style.color = place === 1 ? '#6BCB77' : place === 2 ? '#FFD93D' : '#FF6B6B';
+      if (place === 1) {
+        const yaySound = applyVolume(new Audio('Sounds/yay_FunSpot.wav'));
+        yaySound.play().catch(function() {});
+      }
       finalDistEl.textContent  = 'Distance: ' + dist + 'm';
       finalBestEl.textContent  = 'Best Record: ' + bestDist + 'm';
       newBestMsg.textContent   = isNewBest ? '🎉 New Distance Record!' : '';
@@ -993,6 +1227,10 @@
     }
 
     // ===== INPUT HANDLERS =====
+
+    // Cheat code: type /weston while holding space during a race for +10 wins
+    var cheatBuffer = '';
+    var CHEAT_CODE = '/weston';
 
     document.addEventListener('keydown', function(e) {
       if (e.code === 'Space') {
@@ -1003,6 +1241,40 @@
         if (!spaceHeld) {
           spaceHeld = true;
           boost();
+        }
+      }
+      // Up/Down arrows to switch lanes on Racecar Roadway
+      if (gameRunning && isRoadway()) {
+        if (e.code === 'ArrowUp') {
+          e.preventDefault();
+          if (playerLane < LANE_COUNT - 1) {
+            playerLane++;
+            playerEl.style.bottom = laneBottom(playerLane) + '%';
+          }
+        }
+        if (e.code === 'ArrowDown') {
+          e.preventDefault();
+          if (playerLane > 0) {
+            playerLane--;
+            playerEl.style.bottom = laneBottom(playerLane) + '%';
+          }
+        }
+      }
+      // Track cheat code keys while space is held during race
+      if (gameRunning && spaceHeld && e.key.length === 1) {
+        cheatBuffer += e.key.toLowerCase();
+        if (cheatBuffer.length > CHEAT_CODE.length) {
+          cheatBuffer = cheatBuffer.slice(-CHEAT_CODE.length);
+        }
+        if (cheatBuffer === CHEAT_CODE) {
+          raceWins += 10;
+          cheatBuffer = '';
+          // Flash a quick message
+          var msg = document.createElement('div');
+          msg.style.cssText = 'position:fixed; top:20%; left:50%; transform:translateX(-50%); color:#FFD93D; font-size:36px; font-weight:bold; z-index:9999; text-shadow:0 0 20px rgba(255,217,61,0.8);';
+          msg.textContent = '+10 Wins!';
+          document.body.appendChild(msg);
+          setTimeout(function() { msg.remove(); }, 1500);
         }
       }
     });
@@ -1038,6 +1310,7 @@
       laneEls = [];
       speedLines.forEach(s => s.el.remove());
       speedLines = [];
+      cleanupObstacles();
       biomeBg.style.display = 'none';
     }
 
@@ -1054,6 +1327,10 @@
       cleanupGame();
       gameOverEl.style.display = 'none';
       selectScreen.style.display = 'flex';
+      buildCharGrid();
+      buildBiomeGrid();
+      racingPhase = false;
+      startHomeMusic();
     });
 
     // ===== UPGRADES SYSTEM =====
@@ -1064,23 +1341,31 @@
 
     // Upgrade definitions — first 4 shown by default, rest revealed by "All" button
     const UPGRADES = [
-      { id: 'speed1',  name: 'Speed Boost+',   desc: 'Tap boost +5',         icon: '💨', cost: 3 },
-      { id: 'topspd1', name: 'Top Speed+',     desc: 'Max speed +15',        icon: '⚡', cost: 5 },
-      { id: 'time1',   name: 'Extra Time',     desc: 'Race lasts 18s',       icon: '⏱️', cost: 4 },
-      { id: 'char1',   name: 'New Racer: Rex', desc: 'Unlock Rex!',          icon: '🦖', cost: 7 },
+      { id: 'speed1',  name: 'Speed Boost+',    desc: 'Tap boost +5',            icon: '💨', cost: 3 },
+      { id: 'topspd1', name: 'Top Speed+',      desc: 'Max speed +15',           icon: '⚡', cost: 5 },
+      { id: 'time1',   name: 'Extra Time',      desc: 'Race lasts 18s',          icon: '⏱️', cost: 4 },
+      { id: 'char1',   name: 'New Racer: Rex',  desc: 'Unlock Rex!',             icon: '🦖', cost: 7 },
       // --- Hidden until "All" is clicked ---
-      { id: 'speed2',  name: 'Speed Boost++',  desc: 'Tap boost +10 more',   icon: '🔥', cost: 6 },
-      { id: 'topspd2', name: 'Top Speed++',    desc: 'Max speed +20 more',   icon: '⚡', cost: 8 },
-      { id: 'time2',   name: 'Extra Time++',   desc: 'Race lasts 22s',       icon: '⏱️', cost: 7 },
-      { id: 'decay1',  name: 'Slow Decay',     desc: 'Boost lasts longer',   icon: '🧊', cost: 5 },
-      { id: 'head1',   name: 'Head Start',     desc: 'Start 50m ahead',      icon: '🏁', cost: 6 },
-      { id: 'char2',   name: 'New Racer: Bolt',desc: 'Unlock Bolt!',         icon: '⚡', cost: 10 },
+      { id: 'speed2',  name: 'Speed Boost++',   desc: 'Tap boost +10 more',      icon: '🔥', cost: 6 },
+      { id: 'topspd2', name: 'Top Speed++',     desc: 'Max speed +20 more',      icon: '⚡', cost: 8 },
+      { id: 'time2',   name: 'Extra Time++',    desc: 'Race lasts 22s',          icon: '⏱️', cost: 7 },
+      { id: 'decay1',  name: 'Slow Decay',      desc: 'Boost lasts longer',      icon: '🧊', cost: 5 },
+      { id: 'head1',   name: 'Head Start',      desc: 'Start 50m ahead',         icon: '🏁', cost: 6 },
+      { id: 'char2',   name: 'New Racer: Bolt', desc: 'Unlock Bolt!',            icon: '⚡', cost: 10 },
+      { id: 'dbtap',   name: 'Double Tap',      desc: 'Each tap = 2 boosts',     icon: '✌️', cost: 8 },
+      { id: 'turbo',   name: 'Turbo Start',     desc: 'Start with a speed burst',icon: '🚀', cost: 6 },
+      { id: 'draft',   name: 'Draft Boost',     desc: 'Faster when near an NPC', icon: '🌪️', cost: 9 },
+      { id: 'steady',  name: 'Steady Runner',   desc: 'Less speed wobble',       icon: '🧘', cost: 4 },
+      { id: 'second',  name: 'Second Wind',     desc: 'Auto-boost in last 3s',   icon: '💪', cost: 7 },
+      { id: 'trail',   name: 'Trail Effect',    desc: 'Leave a cool trail',      icon: '✨', cost: 5 },
+      { id: 'bigmode', name: 'Big Mode',        desc: 'Your character is bigger', icon: '🔍', cost: 3 },
+      { id: 'gold',    name: 'Gold Skin',       desc: 'Your character glows gold',icon: '👑', cost: 2 },
+      { id: 'winmult', name: 'Win Multiplier',  desc: 'Earn 3 wins per race',    icon: '💰', cost: 15 },
+      { id: 'lucky',   name: 'Lucky Start',     desc: 'Random chance of boost',  icon: '🍀', cost: 5 },
+      { id: 'biome1',  name: 'Racecar Roadway', desc: 'New biome with obstacles!',icon: '🏎️', cost: 0, unlockDist: 60000 },
     ];
     const DEFAULT_UPGRADE_COUNT = 4;
 
-    // Track purchased upgrades and race wins as currency
-    let raceWins = 0;
-    let purchasedUpgrades = [];
     let showAllUpgrades = false;
 
     function buildUpgradeCards() {
@@ -1095,22 +1380,55 @@
 
       visibleUpgrades.forEach(function(upg) {
         const owned = purchasedUpgrades.indexOf(upg.id) !== -1;
+        const enabled = enabledUpgrades.indexOf(upg.id) !== -1;
         const card = document.createElement('div');
-        card.style.cssText = 'width: 200px; background: ' + (owned ? 'rgba(107,203,119,0.3)' : 'rgba(255,255,255,0.1)') + '; border-radius: 12px; padding: 12px; cursor: ' + (owned ? 'default' : 'pointer') + '; border: 2px solid ' + (owned ? '#6BCB77' : 'transparent') + '; transition: transform 0.15s;';
+        var bgColor = owned ? (enabled ? 'rgba(107,203,119,0.3)' : 'rgba(255,100,100,0.2)') : 'rgba(255,255,255,0.1)';
+        var borderColor = owned ? (enabled ? '#6BCB77' : '#FF6B6B') : 'transparent';
+        card.style.cssText = 'width: 200px; background: ' + bgColor + '; border-radius: 12px; padding: 12px; cursor: pointer; border: 2px solid ' + borderColor + '; transition: transform 0.15s;';
+        var statusText, statusColor;
+        if (owned) {
+          statusText = enabled ? '✅ ON' : '❌ OFF';
+          statusColor = enabled ? '#6BCB77' : '#FF6B6B';
+        } else if (upg.unlockDist) {
+          var progress = Math.min(bestDist, upg.unlockDist);
+          statusText = '📏 ' + progress.toLocaleString() + ' / ' + upg.unlockDist.toLocaleString() + ' m';
+          statusColor = '#7EB3FF';
+        } else {
+          statusText = '🏆 ' + upg.cost + ' wins';
+          statusColor = '#FFD93D';
+        }
         card.innerHTML = '<div style="font-size:36px;">' + upg.icon + '</div>' +
           '<div style="color:white; font-weight:bold; font-size:14px; margin-top:4px;">' + upg.name + '</div>' +
           '<div style="color:#aaa; font-size:12px;">' + upg.desc + '</div>' +
-          '<div style="color:' + (owned ? '#6BCB77' : '#FFD93D') + '; font-size:13px; font-weight:bold; margin-top:6px;">' +
-          (owned ? '✅ Owned' : '🏆 ' + upg.cost + ' wins') + '</div>';
+          '<div style="color:' + statusColor + '; font-size:13px; font-weight:bold; margin-top:6px;">' + statusText + '</div>';
 
-        if (!owned) {
-          card.addEventListener('mouseenter', function() { card.style.transform = 'scale(1.05)'; });
-          card.addEventListener('mouseleave', function() { card.style.transform = 'scale(1)'; });
+        card.addEventListener('mouseenter', function() { card.style.transform = 'scale(1.05)'; });
+        card.addEventListener('mouseleave', function() { card.style.transform = 'scale(1)'; });
+
+        if (owned) {
+          // Toggle on/off
           card.addEventListener('click', function() {
+            var idx = enabledUpgrades.indexOf(upg.id);
+            if (idx !== -1) {
+              enabledUpgrades.splice(idx, 1);
+            } else {
+              enabledUpgrades.push(upg.id);
+            }
+            buildUpgradeCards();
+            buildCharGrid();
+            buildBiomeGrid();
+          });
+        } else {
+          // Purchase (or distance-locked)
+          card.addEventListener('click', function() {
+            if (upg.unlockDist) return; // distance-locked, can't buy
             if (raceWins >= upg.cost) {
               raceWins -= upg.cost;
               purchasedUpgrades.push(upg.id);
+              enabledUpgrades.push(upg.id);  // enabled by default when bought
               buildUpgradeCards();
+              buildCharGrid();
+              buildBiomeGrid();
             }
           });
         }
@@ -1125,6 +1443,7 @@
         allBtn.textContent = '📦 All Upgrades (' + (UPGRADES.length - DEFAULT_UPGRADE_COUNT) + ' more)';
         allBtn.addEventListener('click', function() {
           showAllUpgrades = true;
+          upgradesPanel.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; max-width:100%; background:rgba(0,0,0,0.95); border-radius:0; padding:20px; z-index:9999; overflow-y:auto; text-align:center; display:block;';
           buildUpgradeCards();
         });
         upgradeGrid.appendChild(allBtn);
@@ -1135,6 +1454,7 @@
         someBtn.textContent = '🔽 Show Less';
         someBtn.addEventListener('click', function() {
           showAllUpgrades = false;
+          upgradesPanel.style.cssText = 'background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-top: 15px; width: 90%; max-width: 500px; text-align: center; display:block;';
           buildUpgradeCards();
         });
         upgradeGrid.appendChild(someBtn);
@@ -1148,7 +1468,7 @@
     });
 
     closeUpgradesBtn.addEventListener('click', function() {
-      upgradesPanel.style.display = 'none';
+      upgradesPanel.style.cssText = 'display:none; background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-top: 15px; width: 90%; max-width: 500px; text-align: center;';
       upgradesBtn.style.display = '';
       showAllUpgrades = false;
     });
@@ -1159,8 +1479,10 @@
     boost = function() {
       if (!gameRunning) return;
       let tapAmount = 25;
-      if (purchasedUpgrades.indexOf('speed1') !== -1) tapAmount += 5;
-      if (purchasedUpgrades.indexOf('speed2') !== -1) tapAmount += 10;
+      if (enabledUpgrades.indexOf('speed1') !== -1) tapAmount += 5;
+      if (enabledUpgrades.indexOf('speed2') !== -1) tapAmount += 10;
+      // Double Tap: each tap counts as 2
+      if (enabledUpgrades.indexOf('dbtap') !== -1) tapAmount *= 2;
       playerBoost += tapAmount;
 
       playerEl.classList.remove('boosting', 'running');
@@ -1189,50 +1511,231 @@
       _originalStartRace2();
 
       // Time upgrades
-      if (purchasedUpgrades.indexOf('time1') !== -1) timeLeft = 18;
-      if (purchasedUpgrades.indexOf('time2') !== -1) timeLeft = 22;
+      if (enabledUpgrades.indexOf('time1') !== -1) timeLeft = 18;
+      if (enabledUpgrades.indexOf('time2') !== -1) timeLeft = 22;
 
       // Top speed upgrades
       let spdBonus = 0;
-      if (purchasedUpgrades.indexOf('topspd1') !== -1) spdBonus += 15;
-      if (purchasedUpgrades.indexOf('topspd2') !== -1) spdBonus += 20;
+      if (enabledUpgrades.indexOf('topspd1') !== -1) spdBonus += 15;
+      if (enabledUpgrades.indexOf('topspd2') !== -1) spdBonus += 20;
       if (spdBonus > 0) {
         playerTargetSpeed = Math.min(playerTargetSpeed + spdBonus, PLAYER_MAX_SPD + spdBonus);
       }
 
       // Head start
-      if (purchasedUpgrades.indexOf('head1') !== -1) {
+      if (enabledUpgrades.indexOf('head1') !== -1) {
         playerDist = 50;
       }
 
+      // Turbo Start — burst of speed at race start
+      if (enabledUpgrades.indexOf('turbo') !== -1) {
+        playerBoost = 80;
+      }
+
+      // Lucky Start — 50% chance of a big boost
+      if (enabledUpgrades.indexOf('lucky') !== -1) {
+        if (Math.random() < 0.5) {
+          playerBoost += 60;
+          var luckyMsg = document.createElement('div');
+          luckyMsg.style.cssText = 'position:fixed; top:20%; left:50%; transform:translateX(-50%); color:#6BCB77; font-size:36px; font-weight:bold; z-index:9999; text-shadow:0 0 20px rgba(107,203,119,0.8);';
+          luckyMsg.textContent = '🍀 Lucky Start!';
+          document.body.appendChild(luckyMsg);
+          setTimeout(function() { luckyMsg.remove(); }, 1500);
+        }
+      }
+
+      // Big Mode — make player bigger
+      if (enabledUpgrades.indexOf('bigmode') !== -1) {
+        if (playerEl.classList.contains('runner-emoji')) {
+          playerEl.style.fontSize = '120px';
+        } else {
+          playerEl.style.width = '140px';
+          playerEl.style.height = '140px';
+        }
+      }
+
+      // Gold Skin — golden glow
+      if (enabledUpgrades.indexOf('gold') !== -1) {
+        playerEl.style.filter = 'drop-shadow(0 0 12px gold) drop-shadow(0 0 25px #FFD93D) brightness(1.2) sepia(0.8) saturate(3) hue-rotate(10deg)';
+      }
+
       // Slow decay — reduce decay rate
-      if (purchasedUpgrades.indexOf('decay1') !== -1) {
+      if (enabledUpgrades.indexOf('decay1') !== -1) {
         // Will be checked in game loop patch
       }
 
       timerEl.textContent = timeLeft.toFixed(1) + 's';
     };
 
-    // Patch game loop for slow decay upgrade
+    // Patch game loop for upgrades
     const _origGameLoop = gameLoop;
     gameLoop = function(timestamp) {
-      // Temporarily adjust BOOST_DECAY if upgrade owned
-      if (purchasedUpgrades.indexOf('decay1') !== -1) {
-        // We override the decay in the loop by compensating after
-        // Since BOOST_DECAY is const, we add back some boost each frame
-        var dt = Math.min((timestamp - lastFrame) / 1000, 0.1);
-        // Halve the decay: original removes 120*dt, we add back 60*dt
+      var dt = Math.min((timestamp - lastFrame) / 1000, 0.1);
+
+      // Slow Decay: halve the decay
+      if (enabledUpgrades.indexOf('decay1') !== -1) {
         if (playerBoost > 0) {
           playerBoost += 60 * dt;
         }
       }
+
+      // Steady Runner: smoother speed changes (reduce speed wobble)
+      if (enabledUpgrades.indexOf('steady') !== -1) {
+        playerBaseSpeed += (playerTargetSpeed - playerBaseSpeed) * 0.02;
+      }
+
+      // Draft Boost: go faster when near an NPC
+      if (enabledUpgrades.indexOf('draft') !== -1 && gameRunning) {
+        var drafting = false;
+        npcs.forEach(function(n) {
+          var gap = Math.abs(n.dist - playerDist);
+          if (gap < 200) drafting = true;
+        });
+        if (drafting) {
+          playerBoost += 30 * dt;
+        }
+      }
+
+      // Second Wind: auto-boost in last 3 seconds
+      if (enabledUpgrades.indexOf('second') !== -1 && gameRunning) {
+        if (timeLeft <= 3) {
+          playerBoost += 40 * dt;
+        }
+      }
+
+      // Trail Effect: spawn trail particles behind player
+      if (enabledUpgrades.indexOf('trail') !== -1 && gameRunning && playerEl) {
+        if (!gameLoop._trailTimer) gameLoop._trailTimer = 0;
+        gameLoop._trailTimer += dt;
+        if (gameLoop._trailTimer > 0.03) {
+          gameLoop._trailTimer = 0;
+          var px = parseFloat(playerEl.style.left) || 80;
+          var py = parseFloat(playerEl.style.bottom) || 10;
+          var colors = ['#FFD93D', '#FF6B6B', '#6BCB77', '#C084FC', '#7EB3FF', '#FF9F43', '#EE5A24', '#FDA7DF'];
+          // Spawn 3 particles per tick in a spread pattern
+          for (var ti = 0; ti < 3; ti++) {
+            var trail = document.createElement('div');
+            var color = colors[Math.floor(Math.random() * colors.length)];
+            var size = 30 + Math.random() * 40;
+            var offsetX = -10 + Math.random() * -30;
+            var offsetY = -2 + Math.random() * 4;
+            var isStarShape = Math.random() < 0.4;
+            var shape = isStarShape ? '' : 'border-radius:50%;';
+            var content = isStarShape ? '✨' : '';
+            trail.textContent = content;
+            trail.style.cssText = 'position:absolute; left:' + (px + offsetX) + 'px; bottom:' + (py + offsetY) + '%;' +
+              ' width:' + size + 'px; height:' + size + 'px; ' + shape +
+              ' background:' + (isStarShape ? 'transparent' : color) + ';' +
+              ' font-size:' + (size * 0.8) + 'px; line-height:' + size + 'px; text-align:center;' +
+              ' opacity:0.9; z-index:4; pointer-events:none;' +
+              ' box-shadow:' + (isStarShape ? 'none' : '0 0 ' + (size * 0.6) + 'px ' + color + ', 0 0 ' + (size * 0.3) + 'px white') + ';' +
+              ' transition: opacity 0.6s ease-out, transform 0.6s ease-out;';
+            game.appendChild(trail);
+            (function(t) {
+              setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'scale(0.1) translateX(-40px)'; }, 30);
+              setTimeout(function() { t.remove(); }, 700);
+            })(trail);
+          }
+        }
+      }
+
+      // Racecar Roadway: obstacles, NPC lane dodging, player-NPC collisions
+      if (gameRunning && isRoadway()) {
+        obstacleTimer += dt;
+        // Spawn a new obstacle every 1.2-2.5 seconds
+        if (obstacleTimer > 1.2 + Math.random() * 1.3) {
+          obstacleTimer = 0;
+          spawnObstacle();
+        }
+
+        // NPC lane dodging AI — check for upcoming obstacles and switch lanes
+        npcs.forEach(function(n) {
+          n.laneChangeTimer -= dt;
+          if (n.laneChangeTimer > 0) return;
+          // Check if any obstacle is in their lane and coming toward them
+          var npcX = parseFloat(n.el.style.left) || 80;
+          var shouldDodge = false;
+          obstacles.forEach(function(obs) {
+            if (obs.lane === n.lane && obs.x > npcX && obs.x - npcX < 300) {
+              shouldDodge = true;
+            }
+          });
+          if (shouldDodge) {
+            // Pick a random adjacent lane that's safer
+            var safeLanes = [];
+            if (n.lane > 0) safeLanes.push(n.lane - 1);
+            if (n.lane < LANE_COUNT - 1) safeLanes.push(n.lane + 1);
+            // Prefer lanes without obstacles
+            var bestLane = safeLanes[Math.floor(Math.random() * safeLanes.length)];
+            n.lane = bestLane;
+            n.el.style.bottom = laneBottom(n.lane) + '%';
+            n.labelEl.style.bottom = (laneBottom(n.lane) + 7) + '%';
+            n.laneChangeTimer = 0.5; // cooldown before next lane change
+          }
+        });
+
+        // Move obstacles and check collisions
+        var playerX = parseFloat(playerEl.style.left) || 80;
+        for (var oi = obstacles.length - 1; oi >= 0; oi--) {
+          var obs = obstacles[oi];
+          obs.x -= (200 + playerDist * 0.02) * dt;
+          obs.el.style.left = obs.x + 'px';
+
+          // Player collision — same lane and close x
+          if (!obs.hitPlayer && obs.lane === playerLane && Math.abs(obs.x - playerX) < 40) {
+            obs.hitPlayer = true;
+            obs.el.style.transition = 'opacity 0.3s';
+            obs.el.style.opacity = '0.3';
+            playerBoost = Math.max(playerBoost - 50, 0);
+            playerBaseSpeed = Math.max(playerBaseSpeed * 0.5, PLAYER_MIN_SPD * 0.5);
+            var warn = document.createElement('div');
+            warn.style.cssText = 'position:fixed; top:30%; left:50%; transform:translateX(-50%); color:#FF6B6B; font-size:32px; font-weight:bold; z-index:9999; text-shadow:0 0 15px rgba(255,107,107,0.8);';
+            warn.textContent = '💥 HIT!';
+            document.body.appendChild(warn);
+            setTimeout(function() { warn.remove(); }, 800);
+          }
+
+          // NPC collision with obstacles — same lane and close x
+          npcs.forEach(function(n, ni) {
+            var npcX = parseFloat(n.el.style.left) || 80;
+            if (obs.hitNpcs.indexOf(ni) === -1 && obs.lane === n.lane && Math.abs(obs.x - npcX) < 40) {
+              obs.hitNpcs.push(ni);
+              n.speed *= 0.4; // big slowdown for NPC
+              n.dist -= 30;   // knock them back a bit
+            }
+          });
+
+          // Remove off-screen obstacles
+          if (obs.x < -80) {
+            obs.el.remove();
+            obstacles.splice(oi, 1);
+          }
+        }
+
+        // Player-NPC collisions — same lane and close x = both slow down
+        npcs.forEach(function(n) {
+          if (n.lane === playerLane) {
+            var npcX = parseFloat(n.el.style.left) || 0;
+            if (Math.abs(npcX - playerX) < 45) {
+              // Slow both down
+              playerBoost = Math.max(playerBoost - 20, 0);
+              playerBaseSpeed = Math.max(playerBaseSpeed * 0.7, PLAYER_MIN_SPD * 0.6);
+              n.speed *= 0.5;
+              n.dist -= 15;
+            }
+          }
+        });
+      }
+
       _origGameLoop(timestamp);
     };
 
     // Track wins — patch endGame and auto-refresh upgrades panel
     const _origEndGame = endGame;
     endGame = function(place, placeText) {
-      if (place === 1) raceWins++;
+      if (place === 1) {
+        raceWins += (enabledUpgrades.indexOf('winmult') !== -1) ? 3 : 1;
+      }
       _origEndGame(place, placeText);
       // Auto-refresh upgrades if panel is open
       if (upgradesPanel.style.display !== 'none') {
