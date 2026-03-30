@@ -3,1745 +3,238 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Race O Race! 🏁</title>
+  <title>Race O Race! 🏁 — Only $2.99</title>
   <style>
-    /* ===== GENERAL STYLES ===== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      overflow: hidden;
-      font-family: 'Arial Rounded MT Bold', 'Nunito', Arial, sans-serif;
-      user-select: none;
-      cursor: pointer;
-    }
-
-    /* ===== GAME WORLD ===== */
-    #game {
-      width: 100vw;
-      height: 100vh;
-      background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 55%, #7EC850 55%, #5DA832 100%);
-      position: relative;
-      overflow: hidden;
-    }
-
-    /* Biome background image (covers full screen behind everything) */
-    #biome-bg {
-      position: absolute;
-      inset: 0;
-      background-size: cover;
-      background-position: center;
-      z-index: 0;
-      display: none;
-    }
-
-    /* ===== RACE LANES ===== */
-    .lane {
-      position: absolute;
-      left: 0; right: 0;
-      height: 80px;
-      border-bottom: 3px dashed rgba(255,255,255,0.4);
-      z-index: 1;
-    }
-
-    /* ===== SCROLLING GROUND LINES ===== */
-    .ground-line {
-      position: absolute;
-      height: 4px;
-      background: rgba(255,255,255,0.25);
-      border-radius: 2px;
-      z-index: 1;
-    }
-
-    /* ===== CLOUDS ===== */
-    .cloud {
-      position: absolute;
-      font-size: 50px;
-      opacity: 0.7;
-      z-index: 1;
-    }
-
-    /* ===== DISTANCE MARKERS ===== */
-    .marker {
-      position: absolute;
-      font-size: 16px;
-      font-weight: bold;
-      color: rgba(255,255,255,0.6);
-      bottom: 2%;
-      z-index: 1;
-    }
-
-    /* ===== HUD ===== */
-    #hud {
-      position: absolute;
-      top: 15px; left: 20px; right: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      z-index: 10;
-    }
-
-    #center-hud {
-      background: rgba(255, 255, 255, 0.85);
-      border-radius: 15px;
-      padding: 8px 22px;
-      text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-
-    #timer {
-      font-size: 30px; font-weight: bold; color: #333;
-    }
-
-    #timer.warning {
-      color: #FF6B6B;
-      animation: pulse 0.5s ease-in-out infinite alternate;
-    }
-
-    @keyframes pulse {
-      from { transform: scale(1); }
-      to   { transform: scale(1.1); }
-    }
-
-    #distance-display {
-      font-size: 16px; color: #555; margin-top: 2px;
-    }
-
-    #record-box {
-      background: rgba(255, 255, 255, 0.85);
-      border-radius: 15px;
-      padding: 8px 18px;
-      text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-
-    #best-record {
-      font-size: 16px; font-weight: bold; color: #E8A817;
-    }
-
-    /* ===== RUNNERS (image-based) ===== */
-    .runner {
-      position: absolute;
-      width: 70px;
-      height: 70px;
-      z-index: 5;
-      background-size: 200% 300%;
-      background-repeat: no-repeat;
-      image-rendering: auto;
-      border-radius: 10px;
-    }
-
-    /* NPC runners use emoji fallback */
-    .runner-emoji {
-      position: absolute;
-      font-size: 60px;
-      z-index: 5;
-      transform: scaleX(-1);
-    }
-
-    /* Running animation for image runners */
-    @keyframes run-anim-img {
-      0%   { transform: translateY(0) rotate(-3deg); }
-      25%  { transform: translateY(-10px) rotate(0deg); }
-      50%  { transform: translateY(0) rotate(3deg); }
-      75%  { transform: translateY(-6px) rotate(0deg); }
-      100% { transform: translateY(0) rotate(-3deg); }
-    }
-
-    .runner.running {
-      animation: run-anim-img 0.35s ease-in-out infinite;
-    }
-
-    /* Running animation for emoji NPCs */
-    @keyframes run-anim {
-      0%   { transform: scaleX(-1) translateY(0) rotate(-5deg); }
-      25%  { transform: scaleX(-1) translateY(-10px) rotate(0deg); }
-      50%  { transform: scaleX(-1) translateY(0) rotate(5deg); }
-      75%  { transform: scaleX(-1) translateY(-6px) rotate(0deg); }
-      100% { transform: scaleX(-1) translateY(0) rotate(-5deg); }
-    }
-
-    .runner-emoji.running {
-      animation: run-anim 0.35s ease-in-out infinite;
-    }
-
-    /* Boost pop for image runner */
-    @keyframes boost-pop-img {
-      0%   { transform: scale(1); }
-      30%  { transform: scale(1.35) translateY(-15px); }
-      100% { transform: scale(1); }
-    }
-
-    .runner.boosting {
-      animation: boost-pop-img 0.25s ease-out;
-    }
-
-    /* Boost pop for emoji runner */
-    @keyframes boost-pop {
-      0%   { transform: scaleX(-1) scale(1); }
-      30%  { transform: scaleX(-1) scale(1.35) translateY(-15px); }
-      100% { transform: scaleX(-1) scale(1); }
-    }
-
-    .runner-emoji.boosting {
-      animation: boost-pop 0.25s ease-out;
-    }
-
-    /* Speed lines */
-    .speed-line {
-      position: absolute;
-      height: 3px;
-      background: rgba(255, 255, 100, 0.7);
-      border-radius: 2px;
-      z-index: 4;
-    }
-
-    /* ===== NPC LABELS ===== */
-    .npc-label {
-      position: absolute;
-      font-size: 13px; font-weight: bold;
-      color: white;
-      background: rgba(0,0,0,0.4);
-      padding: 2px 8px;
-      border-radius: 8px;
-      z-index: 6;
-      white-space: nowrap;
-    }
-
-    /* ===== POSITION BADGE ===== */
-    #position-badge {
-      position: absolute;
-      bottom: 12%; left: 20px;
-      font-size: 32px; font-weight: bold;
-      color: white;
-      background: rgba(0,0,0,0.5);
-      padding: 6px 18px;
-      border-radius: 15px;
-      z-index: 10;
-    }
-
-    /* ===== SELECTION SCREEN ===== */
-    #select-screen {
-      position: absolute;
-      inset: 0;
+      font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      z-index: 30;
-      overflow-y: auto;
-      padding: 20px;
-    }
-
-    #select-screen h1 {
-      font-size: 48px;
-      color: #FFD93D;
-      text-shadow: 3px 3px 0 #E85D04;
-      margin: 10px 0 5px;
-    }
-
-    #select-screen h2 {
-      font-size: 26px;
+      min-height: 100vh;
       color: white;
-      margin: 15px 0 10px;
+      overflow-x: hidden;
     }
 
-    #select-screen .sub {
-      font-size: 16px; color: #aaa; margin-bottom: 10px;
-    }
-
-    /* Picker grid */
-    .picker-grid {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-
-    /* Each selectable card */
-    .pick-card {
-      width: 120px;
-      height: 120px;
-      border-radius: 15px;
-      border: 4px solid transparent;
-      cursor: pointer;
-      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
-      background-size: cover;
-      background-position: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .pick-card:hover {
-      transform: scale(1.08);
-      box-shadow: 0 0 20px rgba(255,255,255,0.3);
-    }
-
-    .pick-card.selected {
-      border-color: #FFD93D;
-      box-shadow: 0 0 25px rgba(255,217,61,0.6);
-      transform: scale(1.08);
-    }
-
-    .pick-card .card-label {
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      font-size: 12px;
-      font-weight: bold;
-      text-align: center;
-      padding: 4px;
-    }
-
-    /* Character cards use sprite cropping */
-    .char-card {
-      background-image: url('Characters_Biomes/characters_portraits.png');
-      background-size: 200% 300%;
-    }
-
-    /* Biome cards use sprite cropping */
-    .biome-card {
-      background-image: url('Characters_Biomes/biomes.PNG');
-      background-size: 300% 200%;
-    }
-
-    .big-button {
-      font-size: 28px; font-weight: bold;
-      padding: 18px 50px;
-      border: none;
-      border-radius: 20px;
-      cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-      transition: transform 0.1s, opacity 0.2s;
-    }
-
-    .big-button:hover { transform: scale(1.05); }
-    .big-button:active { transform: scale(0.95); }
-
-    .big-button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    #go-btn {
-      background: linear-gradient(to bottom, #6BCB77, #4A9C5B);
-      color: white;
-      margin-top: 15px;
-      margin-bottom: 20px;
-    }
-
-    /* ===== GAME OVER SCREEN ===== */
-    #game-over {
-      position: absolute;
+    /* Animated background stars */
+    .stars {
+      position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 20;
+      pointer-events: none;
+      z-index: 0;
     }
-
-    #game-over h1 {
-      font-size: 50px; color: #FFD93D;
-      text-shadow: 3px 3px 0 #E85D04;
-      margin-bottom: 10px;
-    }
-
-    #game-over .result {
-      font-size: 26px; color: white; margin: 6px 0;
-    }
-
-    #game-over .new-best {
-      font-size: 22px; color: #6BCB77; margin: 8px 0 15px;
-    }
-
-    #game-over .placement {
-      font-size: 34px; color: #FFD93D; margin-bottom: 10px;
-    }
-
-    #restart-btn {
-      background: linear-gradient(to bottom, #FFD93D, #E8A817);
-      color: #333; margin-top: 10px;
-    }
-
-    /* ===== SPEED HINT ===== */
-    #speed-hint {
+    .star {
       position: absolute;
-      bottom: 5%; width: 100%;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle 2s ease-in-out infinite alternate;
+    }
+    @keyframes twinkle {
+      from { opacity: 0.2; }
+      to   { opacity: 1; }
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 40px 20px 60px;
       text-align: center;
+    }
+
+    /* Emoji racers bouncing across top */
+    .racers {
+      font-size: 48px;
+      margin-bottom: 10px;
+      animation: slide 3s ease-in-out infinite alternate;
+      display: inline-block;
+    }
+    @keyframes slide {
+      from { transform: translateX(-15px); }
+      to   { transform: translateX(15px); }
+    }
+
+    h1 {
+      font-size: clamp(48px, 10vw, 80px);
+      font-weight: 900;
+      line-height: 1;
+      background: linear-gradient(to right, #FFD93D, #FF6B6B, #C084FC, #7EB3FF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      text-shadow: none;
+      filter: drop-shadow(0 0 30px rgba(255,217,61,0.3));
+    }
+
+    .subtitle {
       font-size: 20px;
-      color: rgba(255,255,255,0.85);
-      z-index: 8;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 40px;
     }
 
-    /* ===== COUNTDOWN OVERLAY ===== */
-    #countdown {
-      position: absolute; inset: 0;
-      display: none;
-      justify-content: center; align-items: center;
-      z-index: 25;
-      font-size: 120px; font-weight: bold;
-      color: white;
-      text-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+    /* Feature cards */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
     }
 
-    @keyframes count-pop {
-      0%   { transform: scale(0.3); opacity: 0; }
-      50%  { transform: scale(1.2); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
+    .feature {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 20px 14px;
+      transition: transform 0.2s;
+    }
+    .feature:hover { transform: translateY(-4px); }
+
+    .feature .icon { font-size: 36px; margin-bottom: 8px; }
+    .feature .title { font-size: 15px; font-weight: bold; color: #FFD93D; margin-bottom: 4px; }
+    .feature .desc  { font-size: 13px; color: rgba(255,255,255,0.6); }
+
+    /* Price + buy section */
+    .buy-box {
+      background: rgba(255,255,255,0.06);
+      border: 2px solid rgba(255,217,61,0.4);
+      border-radius: 24px;
+      padding: 36px 24px;
+      margin-bottom: 24px;
     }
 
-    #countdown span { animation: count-pop 0.5s ease-out; }
+    .price {
+      font-size: 56px;
+      font-weight: 900;
+      color: #FFD93D;
+      line-height: 1;
+      margin-bottom: 6px;
+      filter: drop-shadow(0 0 20px rgba(255,217,61,0.5));
+    }
 
+    .price-note {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 28px;
+    }
+
+    .buy-btn {
+      display: inline-block;
+      background: linear-gradient(to bottom, #FFD93D, #E8A817);
+      color: #1a1a2e;
+      font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+      font-size: 24px;
+      font-weight: 900;
+      padding: 18px 56px;
+      border-radius: 50px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 30px rgba(255,217,61,0.4), 0 0 0 0 rgba(255,217,61,0.4);
+      animation: pulse-btn 2s ease-in-out infinite;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .buy-btn:hover {
+      transform: scale(1.06);
+      box-shadow: 0 12px 40px rgba(255,217,61,0.6);
+    }
+    .buy-btn:active { transform: scale(0.97); }
+
+    @keyframes pulse-btn {
+      0%, 100% { box-shadow: 0 8px 30px rgba(255,217,61,0.4), 0 0 0 0 rgba(255,217,61,0.3); }
+      50%       { box-shadow: 0 8px 30px rgba(255,217,61,0.4), 0 0 0 14px rgba(255,217,61,0); }
+    }
+
+    .already-bought {
+      margin-top: 16px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.4);
+    }
+    .already-bought a {
+      color: #7EB3FF;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .footer {
+      font-size: 13px;
+      color: rgba(255,255,255,0.25);
+      margin-top: 40px;
+    }
+
+    /* Track graphic */
+    .track {
+      width: 100%;
+      height: 6px;
+      background: repeating-linear-gradient(to right, #FFD93D 0px, #FFD93D 20px, transparent 20px, transparent 40px);
+      border-radius: 3px;
+      opacity: 0.3;
+      margin: 30px 0;
+    }
   </style>
 </head>
 <body>
 
-  <div id="game">
-    <!-- Biome background (set dynamically) -->
-    <div id="biome-bg"></div>
+  <div class="stars" id="stars"></div>
 
-    <!-- Clouds -->
-    <div class="cloud" style="top:6%; left:10%;">☁️</div>
-    <div class="cloud" style="top:14%; left:50%;">☁️</div>
-    <div class="cloud" style="top:4%; left:78%;">☁️</div>
+  <div class="content">
 
-    <!-- HUD -->
-    <div id="hud">
-      <div id="center-hud">
-        <div id="timer">15.0s</div>
-        <div id="distance-display">📏 0m</div>
+    <div class="racers">🏃💨🏃💨🏃</div>
+
+    <h1>Race O Race!</h1>
+    <p class="subtitle">The wildest emoji race game on the internet 🏁</p>
+
+    <div class="track"></div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="icon">🏆</div>
+        <div class="title">Win Races</div>
+        <div class="desc">Beat 4 opponents and earn wins to spend on upgrades</div>
       </div>
-      <div id="record-box">
-        <div id="best-record">🏆 Best: 0m</div>
+      <div class="feature">
+        <div class="icon">⬆️</div>
+        <div class="title">Upgrades</div>
+        <div class="desc">Speed boosts, trail effects, gold skin, big mode & more</div>
       </div>
-    </div>
-
-    <!-- Position badge -->
-    <div id="position-badge">1st</div>
-
-    <!-- Hint text -->
-    <div id="speed-hint">Tap SPACE or CLICK for a speed boost! 💨</div>
-
-    <!-- Countdown overlay -->
-    <div id="countdown"><span>3</span></div>
-
-
-    <!-- ===== CHARACTER & BIOME SELECTION SCREEN ===== -->
-    <div id="select-screen">
-      <h1>🏁 Race O Race!</h1>
-
-      <h2>Pick Your Racer</h2>
-      <div class="picker-grid" id="char-grid"></div>
-
-      <h2>Pick Your Biome</h2>
-      <div class="picker-grid" id="biome-grid"></div>
-
-      <h2>Difficulty</h2>
-      <div class="picker-grid" id="diff-grid">
-        <div class="diff-btn" data-diff="easy" style="padding: 10px 24px; border-radius: 12px; cursor: pointer; font-size: 18px; font-weight: bold; background: #6BCB77; color: white; border: 3px solid transparent; transition: transform 0.15s;">🟢 Easy</div>
-        <div class="diff-btn selected" data-diff="medium" style="padding: 10px 24px; border-radius: 12px; cursor: pointer; font-size: 18px; font-weight: bold; background: #FFD93D; color: #333; border: 3px solid #fff; box-shadow: 0 0 15px rgba(255,255,255,0.5); transition: transform 0.15s;">🟡 Medium</div>
-        <div class="diff-btn" data-diff="hard" style="padding: 10px 24px; border-radius: 12px; cursor: pointer; font-size: 18px; font-weight: bold; background: #FF6B6B; color: white; border: 3px solid transparent; transition: transform 0.15s;">🔴 Hard</div>
+      <div class="feature">
+        <div class="icon">🌍</div>
+        <div class="title">Biomes</div>
+        <div class="desc">Race through alien deserts, crystal caves, volcanoes & more</div>
       </div>
-
-      <button class="big-button" id="go-btn" disabled>▶ Start Race!</button>
-      <button class="big-button" id="settings-btn" style="background: linear-gradient(to bottom, #7EB3FF, #5A8FD4); color: white; margin-top: 10px;">⚙ Settings</button>
-
-      <!-- Settings Panel (hidden by default) -->
-      <div id="settings-panel" style="display:none; background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-top: 15px; width: 90%; max-width: 500px; text-align: center;">
-        <h2 style="color: #7EB3FF; margin-bottom: 15px;">⚙ Settings</h2>
-        <div style="margin-bottom: 15px; text-align: left;">
-          <label style="color: white; font-size: 16px; font-weight: bold; display: block; margin-bottom: 8px;">Volume</label>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="color: #aaa; font-size: 18px;">🔇</span>
-            <input type="range" id="volume-slider" min="0" max="100" value="100" style="flex: 1; cursor: pointer; accent-color: #7EB3FF;">
-            <span style="color: #aaa; font-size: 18px;">🔊</span>
-            <span id="volume-label" style="color: #FFD93D; font-weight: bold; min-width: 40px; text-align: right;">100%</span>
-          </div>
-        </div>
-        <button class="big-button" id="close-settings-btn" style="background: linear-gradient(to bottom, #888, #666); color: white; margin-top: 10px; font-size: 18px; padding: 10px 30px;">✖ Close</button>
-      </div>
-
-      <button class="big-button" id="upgrades-btn" style="background: linear-gradient(to bottom, #C084FC, #9333EA); color: white; margin-top: 10px;">⬆ Upgrades</button>
-      <p class="sub">Tap SPACE or CLICK for speed boosts — 15 seconds!</p>
-
-      <!-- Upgrades Panel (hidden by default) -->
-      <div id="upgrades-panel" style="display:none; background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-top: 15px; width: 90%; max-width: 500px; text-align: center;">
-        <h2 style="color: #C084FC; margin-bottom: 15px;">⬆ Upgrades</h2>
-        <div style="color: #ccc; font-size: 13px; margin-bottom: 15px; line-height: 1.5; text-align: left; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 12px;">
-          <p style="margin: 0 0 6px 0; color: #FFD93D; font-weight: bold;">How Upgrades Work:</p>
-          <p style="margin: 0 0 4px 0;">Win races to earn wins. Spend wins to buy upgrades that give you an edge!</p>
-          <p style="margin: 0 0 4px 0;">Click an owned upgrade to toggle it <span style="color:#6BCB77;">ON</span> or <span style="color:#FF6B6B;">OFF</span>. Only enabled upgrades take effect during races.</p>
-        </div>
-        <div class="picker-grid" id="upgrade-grid"></div>
-        <button class="big-button" id="close-upgrades-btn" style="background: linear-gradient(to bottom, #888, #666); color: white; margin-top: 10px; font-size: 18px; padding: 10px 30px;">✖ Close</button>
+      <div class="feature">
+        <div class="icon">💾</div>
+        <div class="title">Progress Saved</div>
+        <div class="desc">Your wins & upgrades are saved — pick up where you left off</div>
       </div>
     </div>
 
-    <!-- Game over screen -->
-    <div id="game-over">
-      <h1>🏁 Race Over!</h1>
-      <div class="placement" id="final-place">1st Place!</div>
-      <div class="result" id="final-dist">Distance: 0m</div>
-      <div class="result" id="final-best">Best: 0m</div>
-      <div class="new-best" id="new-best-msg"></div>
-      <button class="big-button" id="restart-btn">🔄 Race Again!</button>
-      <button class="big-button" id="home-btn" style="background: linear-gradient(to bottom, #7EB3FF, #5A8FD4); color: white; margin-top: 10px;">🏠 Home</button>
+    <div class="buy-box">
+      <div class="price">$2.99</div>
+      <div class="price-note">One-time purchase — play forever</div>
+      <a class="buy-btn" href="https://buy.stripe.com/4gMbJ00WQ7Ed08w6qI0ZW00" target="_blank" rel="noopener">🏁 Buy &amp; Play Now</a>
     </div>
+
+    <div class="already-bought">
+      Already bought it? <a href="game.html">Click here to play →</a>
+    </div>
+
+    <div class="track"></div>
+
+    <div class="footer">Strange Strategic Investments &nbsp;·&nbsp; Race O Race! &nbsp;·&nbsp; $2.99 one-time</div>
+
   </div>
 
   <script>
-    // ===== GRAB ELEMENTS =====
-    const game            = document.getElementById('game');
-    const biomeBg         = document.getElementById('biome-bg');
-    const timerEl         = document.getElementById('timer');
-    const distanceEl      = document.getElementById('distance-display');
-    const bestEl          = document.getElementById('best-record');
-    const positionBadge   = document.getElementById('position-badge');
-    const selectScreen    = document.getElementById('select-screen');
-    const charGrid        = document.getElementById('char-grid');
-    const biomeGrid       = document.getElementById('biome-grid');
-    const goBtn           = document.getElementById('go-btn');
-    const gameOverEl      = document.getElementById('game-over');
-    const finalPlaceEl    = document.getElementById('final-place');
-    const finalDistEl     = document.getElementById('final-dist');
-    const finalBestEl     = document.getElementById('final-best');
-    const newBestMsg      = document.getElementById('new-best-msg');
-    const restartBtn      = document.getElementById('restart-btn');
-    const speedHint       = document.getElementById('speed-hint');
-    const countdownEl     = document.getElementById('countdown');
-
-    // ===== CHARACTER & BIOME DATA =====
-    // Characters are in a 2-col x 3-row sprite sheet (characters_portraits.png)
-    // background-size: 200% 300%, background-position: col% row%
-    const CHARACTERS = [
-      { name: 'Blaze',   col: 0, row: 0, bgPos: '0% 0%' },
-      { name: 'Splash',  col: 1, row: 0, bgPos: '100% 0%' },
-      { name: 'Vine',    col: 0, row: 1, bgPos: '0% 50%' },
-      { name: 'Cosmo',   col: 1, row: 1, bgPos: '100% 50%' },
-      { name: 'Zappy',   col: 0, row: 2, bgPos: '0% 100%' },
-      { name: 'Boom',    col: 1, row: 2, bgPos: '100% 100%' },
-      { name: 'Rex',     emoji: '🦖', unlockId: 'char1' },
-      { name: 'Bolt',    emoji: '⚡', unlockId: 'char2' },
-    ];
-
-    // Biomes are in a 3-col x 2-row sprite sheet (biomes.PNG)
-    // background-size: 300% 200%, background-position: col% row%
-    const BIOMES = [
-      { name: 'Alien Desert',   bgPos: '0% 0%' },
-      { name: 'Volcano Rain',   bgPos: '50% 0%' },
-      { name: 'Tropical Beach', bgPos: '100% 0%' },
-      { name: 'Lava World',     bgPos: '0% 100%' },
-      { name: 'Ocean Base',     bgPos: '50% 100%' },
-      { name: 'Crystal Cave',   bgPos: '100% 100%' },
-      { name: 'Racecar Roadway', customBg: true, unlockId: 'biome1' },
-    ];
-
-    const CHAR_SPRITE  = 'Characters_Biomes/characters_portraits.png';
-    const BIOME_SPRITE = 'Characters_Biomes/biomes.PNG';
-
-    // Player selections
-    let selectedChar  = null;  // index into CHARACTERS
-    let selectedBiome = null;  // index into BIOMES
-
-    // Track purchased upgrades and race wins as currency
-    let raceWins = 0;
-    let purchasedUpgrades = [];
-    let enabledUpgrades = [];   // upgrades that are currently turned on
-
-    // ===== BUILD PICKER CARDS =====
-    function buildCharGrid() {
-      charGrid.innerHTML = '';
-      CHARACTERS.forEach((char, i) => {
-        // Skip locked unlockable characters
-        if (char.unlockId && enabledUpgrades.indexOf(char.unlockId) === -1) return;
-
-        const card = document.createElement('div');
-        if (char.emoji) {
-          // Emoji-based unlockable character
-          card.className = 'pick-card';
-          card.style.cssText = 'background: rgba(50,50,50,0.8); display: flex; align-items: center; justify-content: center; font-size: 48px;';
-          card.innerHTML = char.emoji + '<div class="card-label">' + char.name + '</div>';
-        } else {
-          card.className = 'pick-card char-card';
-          card.style.backgroundPosition = char.bgPos;
-          card.innerHTML = '<div class="card-label">' + char.name + '</div>';
-        }
-        if (selectedChar === i) card.classList.add('selected');
-        card.addEventListener('click', function() {
-          charGrid.querySelectorAll('.pick-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          selectedChar = i;
-          checkReady();
-        });
-        charGrid.appendChild(card);
-      });
+    // Generate random stars
+    const starsEl = document.getElementById('stars');
+    for (let i = 0; i < 80; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      const size = Math.random() * 3 + 1;
+      star.style.cssText = `width:${size}px; height:${size}px; top:${Math.random()*100}%; left:${Math.random()*100}%; animation-delay:${Math.random()*2}s; animation-duration:${1.5 + Math.random()*2}s;`;
+      starsEl.appendChild(star);
     }
-    buildCharGrid();
-
-    function buildBiomeGrid() {
-      biomeGrid.innerHTML = '';
-      BIOMES.forEach((biome, i) => {
-        // Skip locked unlockable biomes
-        if (biome.unlockId && enabledUpgrades.indexOf(biome.unlockId) === -1) return;
-
-        const card = document.createElement('div');
-        if (biome.customBg) {
-          // Custom styled card for non-sprite biomes
-          card.className = 'pick-card';
-          card.style.cssText = 'background: linear-gradient(to bottom, #333, #555, #333); display: flex; align-items: center; justify-content: center;';
-          card.innerHTML = '<div style="font-size: 36px;">🏎️</div><div class="card-label">' + biome.name + '</div>';
-        } else {
-          card.className = 'pick-card biome-card';
-          card.style.backgroundPosition = biome.bgPos;
-          card.innerHTML = '<div class="card-label">' + biome.name + '</div>';
-        }
-        if (selectedBiome === i) card.classList.add('selected');
-        card.addEventListener('click', function() {
-          biomeGrid.querySelectorAll('.pick-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          selectedBiome = i;
-          checkReady();
-        });
-        biomeGrid.appendChild(card);
-      });
-    }
-    buildBiomeGrid();
-
-    // Difficulty buttons
-    document.querySelectorAll('.diff-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll('.diff-btn').forEach(function(b) {
-          b.style.borderColor = 'transparent';
-          b.style.boxShadow = 'none';
-          b.classList.remove('selected');
-        });
-        btn.style.borderColor = '#fff';
-        btn.style.boxShadow = '0 0 15px rgba(255,255,255,0.5)';
-        btn.classList.add('selected');
-      });
-    });
-
-    // Enable the Start button only when both are picked
-    function checkReady() {
-      goBtn.disabled = (selectedChar === null || selectedBiome === null);
-    }
-
-    // ===== GAME CONSTANTS =====
-    const RACE_TIME     = 15;
-    const LANE_COUNT    = 5;
-    const TAP_BOOST     = 25;
-    const PLAYER_MIN_SPD = 55;
-    const PLAYER_MAX_SPD = 115;
-    const BOOST_DECAY   = 120;
-    // NPC base definitions (Hard difficulty values)
-    // NPC target distances on Hard (what they finish at in 15s)
-    const NPC_BASE = [
-      { name: 'Noob',            emoji: '🔰', color: '#FF6B6B', targetDist: 10450 },
-      { name: 'Mile',            emoji: '🏃', color: '#6BCB77', targetDist: 11200 },
-      { name: 'Miney Champion',  emoji: '⛏️', color: '#D4A017', targetDist: 11950 },
-      { name: 'Champion',        emoji: '🏆', color: '#7EB3FF', targetDist: 12700 },
-    ];
-
-    // Difficulty multipliers: scale NPC target distances
-    const DIFFICULTY = {
-      easy:   0.29,  // Noob finishes ~3000m — good for kids
-      medium: 0.64,  // Noob finishes ~6700m — moderate
-      hard:   1.0,   // Noob finishes ~10450m — full speed
-    };
-
-    let selectedDifficulty = 'medium';
-
-    // Build NPC_DEFS from base + difficulty
-    let NPC_DEFS = [];
-    function updateNPCDefs() {
-      const mult = DIFFICULTY[selectedDifficulty];
-      NPC_DEFS = NPC_BASE.map(function(npc) {
-        return {
-          name: npc.name, emoji: npc.emoji, color: npc.color,
-          targetDist: Math.round(npc.targetDist * mult),
-        };
-      });
-    }
-    updateNPCDefs();
-
-    // ===== GAME STATE =====
-    let playerBaseSpeed = 0;
-    let playerTargetSpeed = 0;
-    let playerNextChange = 0;
-    let playerBoost  = 0;
-    let playerDist   = 0;
-    let timeLeft     = RACE_TIME;
-    let bestDist     = 0;
-    let gameRunning  = false;
-    let biomeMusic   = null;
-    let homeMusic    = null;
-    let racingPhase  = false;
-    let gameVolume   = 1.0;
-
-    // ===== SETTINGS =====
-    const settingsBtn      = document.getElementById('settings-btn');
-    const settingsPanel    = document.getElementById('settings-panel');
-    const closeSettingsBtn = document.getElementById('close-settings-btn');
-    const volumeSlider     = document.getElementById('volume-slider');
-    const volumeLabel      = document.getElementById('volume-label');
-
-    settingsBtn.addEventListener('click', function() {
-      settingsPanel.style.display = 'block';
-      settingsBtn.style.display = 'none';
-    });
-    closeSettingsBtn.addEventListener('click', function() {
-      settingsPanel.style.display = 'none';
-      settingsBtn.style.display = '';
-    });
-
-    volumeSlider.addEventListener('input', function() {
-      gameVolume = volumeSlider.value / 100;
-      volumeLabel.textContent = volumeSlider.value + '%';
-      // Apply to any currently playing audio
-      if (homeMusic) homeMusic.volume = gameVolume;
-      if (biomeMusic) biomeMusic.volume = gameVolume;
-    });
-
-    // Helper to apply volume to any new audio
-    function applyVolume(audio) {
-      audio.volume = gameVolume;
-      return audio;
-    }
-
-    // Click sound on any click
-    const clickSound = new Audio('Sounds/click.mp3');
-    document.addEventListener('click', function() {
-      clickSound.volume = gameVolume;
-      clickSound.currentTime = 0;
-      clickSound.play().catch(function() {});
-    });
-
-    // Start home screen music
-    function startHomeMusic() {
-      if (racingPhase) return;
-      if (homeMusic && !homeMusic.paused) return;
-      if (!homeMusic) {
-        homeMusic = new Audio('Sounds/home_screen.wav');
-        homeMusic.loop = true;
-        homeMusic.volume = gameVolume;
-      }
-      homeMusic.play().catch(function() {});
-    }
-    function stopHomeMusic() {
-      if (homeMusic) { homeMusic.pause(); homeMusic = null; }
-    }
-
-    // Start home music as soon as user interacts with the page
-    startHomeMusic();
-    ['click', 'keydown', 'touchstart'].forEach(function(evt) {
-      document.addEventListener(evt, function() { startHomeMusic(); }, { once: true });
-    });
-    let lastFrame    = 0;
-    let worldOffset  = 0;
-    let spaceHeld    = false;
-
-    // ===== OBSTACLE SYSTEM (Racecar Roadway) =====
-    let obstacles = [];
-    let obstacleTimer = 0;
-    let playerLane = 0;  // 0 = bottom lane, up to LANE_COUNT-1
-    const OBSTACLE_EMOJIS = ['🛢️', '🚧', '⚠️', '🔶', '🪨'];
-
-    function spawnObstacle() {
-      var emoji = OBSTACLE_EMOJIS[Math.floor(Math.random() * OBSTACLE_EMOJIS.length)];
-      var lane = Math.floor(Math.random() * LANE_COUNT);
-      var el = document.createElement('div');
-      el.style.cssText = 'position:absolute; font-size:50px; z-index:6; transition: none; pointer-events:none;';
-      el.style.bottom = laneBottom(lane) + '%';
-      el.style.left = (window.innerWidth + 60) + 'px';
-      el.textContent = emoji;
-      game.appendChild(el);
-      obstacles.push({ el: el, x: window.innerWidth + 60, lane: lane, hitPlayer: false, hitNpcs: [] });
-    }
-
-    function cleanupObstacles() {
-      obstacles.forEach(function(o) { o.el.remove(); });
-      obstacles = [];
-      obstacleTimer = 0;
-      playerLane = 0;
-    }
-
-    function isRoadway() {
-      return BIOMES[selectedBiome] && BIOMES[selectedBiome].name === 'Racecar Roadway';
-    }
-
-    let groundLines = [];
-    let speedLines  = [];
-    let markers     = [];
-    let laneEls     = [];
-    let playerEl    = null;
-    let npcs        = [];
-
-    // ===== LANE POSITIONS =====
-    function laneBottom(index) {
-      return 8 + index * 10;
-    }
-
-    // ===== CREATE RACE LANES =====
-    function createLanes() {
-      laneEls.forEach(el => el.remove());
-      laneEls = [];
-      for (let i = 0; i < LANE_COUNT; i++) {
-        const lane = document.createElement('div');
-        lane.className = 'lane';
-        lane.style.bottom = laneBottom(i) + '%';
-        game.appendChild(lane);
-        laneEls.push(lane);
-      }
-    }
-
-    // ===== CREATE GROUND LINES =====
-    function createGroundLines() {
-      groundLines.forEach(l => l.remove());
-      groundLines = [];
-      for (let i = 0; i < 20; i++) {
-        const line = document.createElement('div');
-        line.className = 'ground-line';
-        line.style.width = (15 + Math.random() * 40) + 'px';
-        line.style.left = (Math.random() * window.innerWidth) + 'px';
-        line.style.bottom = (2 + Math.random() * 42) + '%';
-        game.appendChild(line);
-        groundLines.push(line);
-      }
-    }
-
-    // ===== CREATE DISTANCE MARKERS =====
-    function createMarkers() {
-      markers.forEach(m => m.el.remove());
-      markers = [];
-      for (let i = 0; i < 30; i++) {
-        const el = document.createElement('div');
-        el.className = 'marker';
-        el.textContent = (i * 100) + 'm';
-        el.style.left = (i * 400) + 'px';
-        game.appendChild(el);
-        markers.push({ el, baseX: i * 400 });
-      }
-    }
-
-    // ===== CREATE PLAYER (image from sprite sheet) =====
-    function createPlayer() {
-      if (playerEl) playerEl.remove();
-      playerEl = document.createElement('div');
-      var charData = CHARACTERS[selectedChar];
-      if (charData.emoji) {
-        // Emoji-based character (unlockable)
-        playerEl.className = 'runner-emoji';
-        playerEl.textContent = charData.emoji;
-      } else {
-        playerEl.className = 'runner';
-        playerEl.style.backgroundImage = "url('" + CHAR_SPRITE + "')";
-        playerEl.style.backgroundPosition = charData.bgPos;
-      }
-      playerEl.style.bottom = laneBottom(0) + '%';
-      playerEl.style.left = '80px';
-      game.appendChild(playerEl);
-    }
-
-    // ===== CREATE NPCs =====
-    function createNPCs() {
-      npcs.forEach(n => { n.el.remove(); n.labelEl.remove(); });
-      npcs = [];
-
-      NPC_DEFS.forEach((def, i) => {
-        const el = document.createElement('div');
-        el.className = 'runner-emoji';
-        el.textContent = def.emoji;
-        el.style.bottom = laneBottom(i + 1) + '%';
-        el.style.left = '80px';
-        game.appendChild(el);
-
-        const label = document.createElement('div');
-        label.className = 'npc-label';
-        label.textContent = def.name;
-        label.style.color = def.color;
-        label.style.bottom = (laneBottom(i + 1) + 7) + '%';
-        label.style.left = '80px';
-        game.appendChild(label);
-
-        npcs.push({
-          el, labelEl: label,
-          dist: 0, speed: 0, targetSpeed: 0,
-          def, nextChange: 0,
-          lane: i + 1, // each NPC starts in their own lane
-          laneChangeTimer: 0,
-        });
-      });
-    }
-
-    // ===== APPLY BIOME BACKGROUND =====
-    function applyBiome() {
-      var biome = BIOMES[selectedBiome];
-      if (biome.customBg) {
-        // Racecar Roadway — dark asphalt with road markings
-        biomeBg.style.backgroundImage = 'none';
-        biomeBg.style.background = 'linear-gradient(to bottom, #1a1a2e 0%, #2d2d44 30%, #555 32%, #444 34%, #333 36%, #444 100%)';
-        biomeBg.style.backgroundSize = 'cover';
-      } else {
-        biomeBg.style.background = 'none';
-        biomeBg.style.backgroundImage = "url('" + BIOME_SPRITE + "')";
-        biomeBg.style.backgroundSize = '300% 200%';
-        biomeBg.style.backgroundPosition = biome.bgPos;
-      }
-      biomeBg.style.display = 'block';
-    }
-
-    // ===== SPEED LINES =====
-    function spawnSpeedLine() {
-      const line = document.createElement('div');
-      line.className = 'speed-line';
-      line.style.width = (20 + Math.random() * 40) + 'px';
-      line.style.left = '70px';
-      line.style.bottom = (laneBottom(0) + 1 + Math.random() * 4) + '%';
-      line.style.opacity = '0.8';
-      game.appendChild(line);
-      speedLines.push({ el: line, life: 0.4 });
-    }
-
-    // ===== INITIATE START (countdown) =====
-    function initiateStart() {
-      racingPhase = true;
-      stopHomeMusic();
-      // Read selected difficulty
-      var diffBtn = document.querySelector('.diff-btn.selected');
-      if (diffBtn) selectedDifficulty = diffBtn.getAttribute('data-diff');
-      updateNPCDefs();
-
-      selectScreen.style.display = 'none';
-      gameOverEl.style.display   = 'none';
-
-      applyBiome();
-      createLanes();
-      createGroundLines();
-      createMarkers();
-      createPlayer();
-      createNPCs();
-
-      // Play sound 2 seconds before visuals start
-      var SOUND_HEAD_START = 2000; // ms sound plays before countdown visuals
-      var BEEP2 = 670;    // ms when 2nd beep hits (relative to visuals start)
-      var BEEP3 = 1340;   // ms when 3rd beep hits
-      var BEEP4 = 2010;   // ms when long beep (GO!) hits
-      var RACE  = 2700;   // ms when race starts
-
-      const countdownSound = applyVolume(new Audio('Sounds/start_of_race_1_2_3_go.wav'));
-      // Start sound first, then show visuals after head start
-      countdownSound.play().then(function() {
-        setTimeout(function() {
-          countdownEl.style.display = 'flex';
-          countdownEl.innerHTML = '<span>3</span>';
-          setTimeout(function() { countdownEl.innerHTML = '<span>2</span>'; }, BEEP2);
-          setTimeout(function() { countdownEl.innerHTML = '<span>1</span>'; }, BEEP3);
-          setTimeout(function() { countdownEl.innerHTML = '<span>GO!</span>'; }, BEEP4);
-          setTimeout(function() {
-            countdownEl.style.display = 'none';
-            startRace();
-          }, RACE);
-        }, SOUND_HEAD_START);
-      }).catch(function() {
-        // Fallback if audio blocked — just run visuals anyway
-        countdownEl.style.display = 'flex';
-        countdownEl.innerHTML = '<span>3</span>';
-        setTimeout(function() { countdownEl.innerHTML = '<span>2</span>'; }, BEEP2);
-        setTimeout(function() { countdownEl.innerHTML = '<span>1</span>'; }, BEEP3);
-        setTimeout(function() { countdownEl.innerHTML = '<span>GO!</span>'; }, BEEP4);
-        setTimeout(function() {
-          countdownEl.style.display = 'none';
-          startRace();
-        }, RACE);
-      });
-    }
-
-    // ===== START THE RACE =====
-    function startRace() {
-      playerBaseSpeed = PLAYER_MIN_SPD + Math.random() * 40;
-      playerTargetSpeed = PLAYER_MIN_SPD + Math.random() * (PLAYER_MAX_SPD - PLAYER_MIN_SPD);
-      playerNextChange = 0.5 + Math.random() * 1.5;
-      playerBoost  = 0;
-      playerDist   = 0;
-      timeLeft     = RACE_TIME;
-      worldOffset  = 0;
-      gameRunning  = true;
-      spaceHeld    = false;
-      playerLane   = 0;
-
-      npcs.forEach(n => {
-        n.dist  = 0;
-        n.speed = 0;
-        // Add slight randomness to target distance (+/- 5%)
-        n.finalDist = n.def.targetDist * (0.95 + Math.random() * 0.1);
-        // Average speed needed to hit target distance
-        n.avgSpd = n.finalDist / RACE_TIME;
-      });
-
-      timerEl.textContent     = RACE_TIME.toFixed(1) + 's';
-      timerEl.classList.remove('warning');
-      distanceEl.textContent  = '📏 0m';
-      speedHint.style.display = 'block';
-      positionBadge.style.display = 'block';
-
-      npcs.forEach(n => n.el.classList.add('running'));
-
-      // Play biome music
-      var biomeName = BIOMES[selectedBiome].name;
-      if (biomeName === 'Alien Desert') {
-        biomeMusic = applyVolume(new Audio('Sounds/alien_desert_biome.wav'));
-        biomeMusic.loop = true;
-        biomeMusic.play().catch(function() {});
-      } else if (biomeName === 'Crystal Cave') {
-        biomeMusic = applyVolume(new Audio('Sounds/Crystal_Cave_biome.mp3'));
-        biomeMusic.loop = true;
-        biomeMusic.play().catch(function() {});
-      } else if (biomeName === 'Racecar Roadway') {
-        biomeMusic = applyVolume(new Audio('Sounds/racecar_runway_biome.flac'));
-        biomeMusic.loop = true;
-        biomeMusic.play().catch(function() {});
-      } else if (biomeName === 'Lava World' || biomeName === 'Volcano Rain') {
-        biomeMusic = applyVolume(new Audio('Sounds/volcano_biome.mp3'));
-        biomeMusic.loop = true;
-        biomeMusic.play().catch(function() {});
-      } else if (biomeName === 'Ocean Base' || biomeName === 'Tropical Beach') {
-        biomeMusic = applyVolume(new Audio('Sounds/water_biomes.mp3'));
-        biomeMusic.loop = true;
-        biomeMusic.play().catch(function() {});
-      }
-
-      lastFrame = performance.now();
-      requestAnimationFrame(gameLoop);
-    }
-
-    // ===== MAIN GAME LOOP =====
-    function gameLoop(timestamp) {
-      if (!gameRunning) return;
-
-      const delta = (timestamp - lastFrame) / 1000;
-      lastFrame = timestamp;
-      const dt = Math.min(delta, 0.1);
-
-      // --- Timer ---
-      timeLeft -= dt;
-      if (timeLeft < 0) timeLeft = 0;
-      timerEl.textContent = timeLeft.toFixed(1) + 's';
-      if (timeLeft <= 5) timerEl.classList.add('warning');
-
-      // --- Player continuous movement (same system as NPCs) ---
-      playerNextChange -= dt;
-      if (playerNextChange <= 0) {
-        playerTargetSpeed = PLAYER_MIN_SPD + Math.random() * (PLAYER_MAX_SPD - PLAYER_MIN_SPD);
-        playerNextChange = 0.5 + Math.random() * 2;
-      }
-
-      if (playerBaseSpeed < playerTargetSpeed) {
-        playerBaseSpeed += 250 * dt;
-        if (playerBaseSpeed > playerTargetSpeed) playerBaseSpeed = playerTargetSpeed;
-      } else {
-        playerBaseSpeed -= 200 * dt;
-        if (playerBaseSpeed < playerTargetSpeed) playerBaseSpeed = playerTargetSpeed;
-      }
-
-      // Boost from tapping decays over time
-      if (playerBoost > 0) {
-        playerBoost -= BOOST_DECAY * dt;
-        if (playerBoost < 0) playerBoost = 0;
-      }
-
-      const playerSpeed = playerBaseSpeed + playerBoost;
-      playerDist += playerSpeed * dt;
-
-      // --- Racer screen positioning (left-to-right across screen) ---
-      // Find the max expected distance for this race to map positions
-      var maxRaceDist = 0;
-      npcs.forEach(n => { if (n.finalDist > maxRaceDist) maxRaceDist = n.finalDist; });
-      maxRaceDist *= 1.1; // add 10% headroom so finish line isn't at the very edge
-      const startX = 60;  // left edge start position (px)
-      const endX = window.innerWidth - 60; // right edge finish position (px)
-      const trackWidth = endX - startX;
-
-      // Position player on screen based on distance
-      const playerScreenX = startX + (playerDist / maxRaceDist) * trackWidth;
-      playerEl.style.left = Math.min(playerScreenX, endX) + 'px';
-
-      // --- World scrolling (background elements still scroll for visual effect) ---
-      const prevOffset = worldOffset;
-      worldOffset = playerDist * 2.5;
-      const scrollDelta = worldOffset - prevOffset;
-
-      groundLines.forEach(line => {
-        let x = parseFloat(line.style.left) - scrollDelta;
-        if (x < -60) x = window.innerWidth + Math.random() * 200;
-        line.style.left = x + 'px';
-      });
-
-      document.querySelectorAll('.cloud').forEach(cloud => {
-        let x = parseFloat(cloud.style.left) || 0;
-        x -= scrollDelta * 0.01;
-        if (x < -5) x = 105;
-        cloud.style.left = x + '%';
-      });
-
-      markers.forEach(m => {
-        const screenX = m.baseX - worldOffset;
-        m.el.style.left = screenX + 'px';
-        m.el.style.display = (screenX > -100 && screenX < window.innerWidth + 100) ? 'block' : 'none';
-      });
-
-      // --- NPCs ---
-      const elapsed = RACE_TIME - timeLeft;
-      const progress = Math.min(elapsed / RACE_TIME, 1); // 0→1 over race
-
-      npcs.forEach(n => {
-        const correctedAvg = n.avgSpd / 0.60;
-        const speedPct = 0.20 + 0.80 * progress;
-        const wobble = 1 + (Math.sin(elapsed * 3 + npcs.indexOf(n) * 2) * 0.03);
-        n.speed = correctedAvg * speedPct * wobble;
-
-        n.dist += n.speed * dt;
-
-        // Position NPC on screen based on their distance
-        const npcScreenX = startX + (n.dist / maxRaceDist) * trackWidth;
-        const clampedX = Math.max(-60, Math.min(endX, npcScreenX));
-        n.el.style.left = clampedX + 'px';
-        n.labelEl.style.left = clampedX + 'px';
-
-        const animDuration = Math.max(0.15, 0.5 - n.speed / 600);
-        n.el.style.animationDuration = animDuration + 's';
-      });
-
-      // --- Player animation ---
-      if (playerSpeed > 10) {
-        if (!playerEl.classList.contains('running') && !playerEl.classList.contains('boosting')) {
-          playerEl.classList.add('running');
-        }
-        playerEl.style.animationDuration = Math.max(0.15, 0.5 - playerSpeed / 600) + 's';
-      } else {
-        if (!playerEl.classList.contains('boosting')) {
-          playerEl.classList.remove('running');
-        }
-      }
-
-      // --- Speed lines ---
-      if (playerSpeed > 100 && Math.random() < 0.3) spawnSpeedLine();
-
-      speedLines = speedLines.filter(s => {
-        s.life -= dt;
-        if (s.life <= 0) { s.el.remove(); return false; }
-        let x = parseFloat(s.el.style.left) - scrollDelta * 1.5;
-        s.el.style.left = x + 'px';
-        s.el.style.opacity = s.life;
-        return true;
-      });
-
-      // --- Distance display ---
-      distanceEl.textContent = '📏 ' + Math.floor(playerDist) + 'm';
-
-      // --- Race position ---
-      const allDists = [playerDist, ...npcs.map(n => n.dist)];
-      const sorted = [...allDists].sort((a, b) => b - a);
-      const place = sorted.indexOf(playerDist) + 1;
-      const placeText = ['1st', '2nd', '3rd', '4th', '5th'][place - 1];
-      positionBadge.textContent = placeText;
-      positionBadge.style.background = place === 1
-        ? 'rgba(107,203,119,0.7)'
-        : place <= 2 ? 'rgba(255,217,61,0.7)' : 'rgba(255,107,107,0.7)';
-
-      // --- Race over? ---
-      if (timeLeft <= 0) {
-        endGame(place, placeText);
-        return;
-      }
-
-      requestAnimationFrame(gameLoop);
-    }
-
-    // ===== BOOST =====
-    function boost() {
-      if (!gameRunning) return;
-
-      playerBoost += TAP_BOOST;
-
-      playerEl.classList.remove('boosting', 'running');
-      void playerEl.offsetWidth;
-      playerEl.classList.add('boosting');
-
-      setTimeout(() => {
-        if (gameRunning) {
-          playerEl.classList.remove('boosting');
-          playerEl.classList.add('running');
-        }
-      }, 250);
-
-      speedHint.style.display = 'none';
-    }
-
-    // ===== END GAME =====
-    function endGame(place, placeText) {
-      gameRunning = false;
-      if (biomeMusic) { biomeMusic.pause(); biomeMusic = null; }
-
-      playerEl.classList.remove('running', 'boosting');
-      npcs.forEach(n => n.el.classList.remove('running'));
-      positionBadge.style.display = 'none';
-
-      speedLines.forEach(s => s.el.remove());
-      speedLines = [];
-
-      const dist = Math.floor(playerDist);
-      const isNewBest = dist > bestDist;
-      if (isNewBest) bestDist = dist;
-
-      // Auto-unlock distance-based upgrades
-      UPGRADES.forEach(function(upg) {
-        if (upg.unlockDist && bestDist >= upg.unlockDist && purchasedUpgrades.indexOf(upg.id) === -1) {
-          purchasedUpgrades.push(upg.id);
-          enabledUpgrades.push(upg.id);
-          var unlockMsg = document.createElement('div');
-          unlockMsg.style.cssText = 'position:fixed; top:12%; left:50%; transform:translateX(-50%); color:#7EB3FF; font-size:32px; font-weight:bold; z-index:9999; text-shadow:0 0 20px rgba(126,179,255,0.8);';
-          unlockMsg.textContent = '🏎️ Racecar Roadway Unlocked!';
-          document.body.appendChild(unlockMsg);
-          setTimeout(function() { unlockMsg.remove(); }, 3000);
-        }
-      });
-
-      bestEl.textContent = '🏆 Best: ' + bestDist + 'm';
-
-      finalPlaceEl.textContent = placeText + ' Place!';
-      finalPlaceEl.style.color = place === 1 ? '#6BCB77' : place === 2 ? '#FFD93D' : '#FF6B6B';
-      if (place === 1) {
-        const yaySound = applyVolume(new Audio('Sounds/yay_FunSpot.wav'));
-        yaySound.play().catch(function() {});
-      }
-      finalDistEl.textContent  = 'Distance: ' + dist + 'm';
-      finalBestEl.textContent  = 'Best Record: ' + bestDist + 'm';
-      newBestMsg.textContent   = isNewBest ? '🎉 New Distance Record!' : '';
-      gameOverEl.style.display = 'flex';
-    }
-
-    // ===== INPUT HANDLERS =====
-
-    // Cheat code: type /weston while holding space during a race for +10 wins
-    var cheatBuffer = '';
-    var CHEAT_CODE = '/weston';
-
-    document.addEventListener('keydown', function(e) {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        // On select screen, space does nothing (must click)
-        if (selectScreen.style.display !== 'none' && selectScreen.style.display !== '') return;
-        if (!gameRunning) return;
-        if (!spaceHeld) {
-          spaceHeld = true;
-          boost();
-        }
-      }
-      // Up/Down arrows to switch lanes on Racecar Roadway
-      if (gameRunning && isRoadway()) {
-        if (e.code === 'ArrowUp') {
-          e.preventDefault();
-          if (playerLane < LANE_COUNT - 1) {
-            playerLane++;
-            playerEl.style.bottom = laneBottom(playerLane) + '%';
-          }
-        }
-        if (e.code === 'ArrowDown') {
-          e.preventDefault();
-          if (playerLane > 0) {
-            playerLane--;
-            playerEl.style.bottom = laneBottom(playerLane) + '%';
-          }
-        }
-      }
-      // Track cheat code keys while space is held during race
-      if (gameRunning && spaceHeld && e.key.length === 1) {
-        cheatBuffer += e.key.toLowerCase();
-        if (cheatBuffer.length > CHEAT_CODE.length) {
-          cheatBuffer = cheatBuffer.slice(-CHEAT_CODE.length);
-        }
-        if (cheatBuffer === CHEAT_CODE) {
-          raceWins += 10;
-          cheatBuffer = '';
-          // Flash a quick message
-          var msg = document.createElement('div');
-          msg.style.cssText = 'position:fixed; top:20%; left:50%; transform:translateX(-50%); color:#FFD93D; font-size:36px; font-weight:bold; z-index:9999; text-shadow:0 0 20px rgba(255,217,61,0.8);';
-          msg.textContent = '+10 Wins!';
-          document.body.appendChild(msg);
-          setTimeout(function() { msg.remove(); }, 1500);
-        }
-      }
-    });
-
-    document.addEventListener('keyup', function(e) {
-      if (e.code === 'Space') spaceHeld = false;
-    });
-
-    game.addEventListener('click', function(e) {
-      if (e.target.tagName === 'BUTTON') return;
-      if (e.target.closest('#select-screen')) return;
-      if (e.target.closest('#game-over')) return;
-      if (gameRunning) boost();
-    });
-
-    // Start button on selection screen
-    goBtn.addEventListener('click', function() {
-      if (selectedChar !== null && selectedBiome !== null) {
-        initiateStart();
-      }
-    });
-
-    // Clean up game elements helper
-    function cleanupGame() {
-      if (playerEl) playerEl.remove();
-      npcs.forEach(n => { n.el.remove(); n.labelEl.remove(); });
-      npcs = [];
-      groundLines.forEach(l => l.remove());
-      groundLines = [];
-      markers.forEach(m => m.el.remove());
-      markers = [];
-      laneEls.forEach(el => el.remove());
-      laneEls = [];
-      speedLines.forEach(s => s.el.remove());
-      speedLines = [];
-      cleanupObstacles();
-      biomeBg.style.display = 'none';
-    }
-
-    // Restart — race again with same selections
-    restartBtn.addEventListener('click', function() {
-      cleanupGame();
-      gameOverEl.style.display = 'none';
-      initiateStart();
-    });
-
-    // Home — go back to select screen
-    const homeBtn = document.getElementById('home-btn');
-    homeBtn.addEventListener('click', function() {
-      cleanupGame();
-      gameOverEl.style.display = 'none';
-      selectScreen.style.display = 'flex';
-      buildCharGrid();
-      buildBiomeGrid();
-      racingPhase = false;
-      startHomeMusic();
-    });
-
-    // ===== UPGRADES SYSTEM =====
-    const upgradesBtn     = document.getElementById('upgrades-btn');
-    const upgradesPanel   = document.getElementById('upgrades-panel');
-    const closeUpgradesBtn = document.getElementById('close-upgrades-btn');
-    const upgradeGrid     = document.getElementById('upgrade-grid');
-
-    // Upgrade definitions — first 4 shown by default, rest revealed by "All" button
-    const UPGRADES = [
-      { id: 'speed1',  name: 'Speed Boost+',    desc: 'Tap boost +5',            icon: '💨', cost: 3 },
-      { id: 'topspd1', name: 'Top Speed+',      desc: 'Max speed +15',           icon: '⚡', cost: 5 },
-      { id: 'time1',   name: 'Extra Time',      desc: 'Race lasts 18s',          icon: '⏱️', cost: 4 },
-      { id: 'char1',   name: 'New Racer: Rex',  desc: 'Unlock Rex!',             icon: '🦖', cost: 7 },
-      // --- Hidden until "All" is clicked ---
-      { id: 'speed2',  name: 'Speed Boost++',   desc: 'Tap boost +10 more',      icon: '🔥', cost: 6 },
-      { id: 'topspd2', name: 'Top Speed++',     desc: 'Max speed +20 more',      icon: '⚡', cost: 8 },
-      { id: 'time2',   name: 'Extra Time++',    desc: 'Race lasts 22s',          icon: '⏱️', cost: 7 },
-      { id: 'decay1',  name: 'Slow Decay',      desc: 'Boost lasts longer',      icon: '🧊', cost: 5 },
-      { id: 'head1',   name: 'Head Start',      desc: 'Start 50m ahead',         icon: '🏁', cost: 6 },
-      { id: 'char2',   name: 'New Racer: Bolt', desc: 'Unlock Bolt!',            icon: '⚡', cost: 10 },
-      { id: 'dbtap',   name: 'Double Tap',      desc: 'Each tap = 2 boosts',     icon: '✌️', cost: 8 },
-      { id: 'turbo',   name: 'Turbo Start',     desc: 'Start with a speed burst',icon: '🚀', cost: 6 },
-      { id: 'draft',   name: 'Draft Boost',     desc: 'Faster when near an NPC', icon: '🌪️', cost: 9 },
-      { id: 'steady',  name: 'Steady Runner',   desc: 'Less speed wobble',       icon: '🧘', cost: 4 },
-      { id: 'second',  name: 'Second Wind',     desc: 'Auto-boost in last 3s',   icon: '💪', cost: 7 },
-      { id: 'trail',   name: 'Trail Effect',    desc: 'Leave a cool trail',      icon: '✨', cost: 5 },
-      { id: 'bigmode', name: 'Big Mode',        desc: 'Your character is bigger', icon: '🔍', cost: 3 },
-      { id: 'gold',    name: 'Gold Skin',       desc: 'Your character glows gold',icon: '👑', cost: 2 },
-      { id: 'winmult', name: 'Win Multiplier',  desc: 'Earn 3 wins per race',    icon: '💰', cost: 15 },
-      { id: 'lucky',   name: 'Lucky Start',     desc: 'Random chance of boost',  icon: '🍀', cost: 5 },
-      { id: 'biome1',  name: 'Racecar Roadway', desc: 'New biome with obstacles!',icon: '🏎️', cost: 0, unlockDist: 60000 },
-    ];
-    const DEFAULT_UPGRADE_COUNT = 4;
-
-    let showAllUpgrades = false;
-
-    function buildUpgradeCards() {
-      upgradeGrid.innerHTML = '';
-      // Wins counter
-      const winsLabel = document.createElement('div');
-      winsLabel.style.cssText = 'width:100%; color: #FFD93D; font-size: 20px; font-weight: bold; margin-bottom: 10px;';
-      winsLabel.textContent = '🏆 Wins: ' + raceWins;
-      upgradeGrid.appendChild(winsLabel);
-
-      const visibleUpgrades = showAllUpgrades ? UPGRADES : UPGRADES.slice(0, DEFAULT_UPGRADE_COUNT);
-
-      visibleUpgrades.forEach(function(upg) {
-        const owned = purchasedUpgrades.indexOf(upg.id) !== -1;
-        const enabled = enabledUpgrades.indexOf(upg.id) !== -1;
-        const card = document.createElement('div');
-        var bgColor = owned ? (enabled ? 'rgba(107,203,119,0.3)' : 'rgba(255,100,100,0.2)') : 'rgba(255,255,255,0.1)';
-        var borderColor = owned ? (enabled ? '#6BCB77' : '#FF6B6B') : 'transparent';
-        card.style.cssText = 'width: 200px; background: ' + bgColor + '; border-radius: 12px; padding: 12px; cursor: pointer; border: 2px solid ' + borderColor + '; transition: transform 0.15s;';
-        var statusText, statusColor;
-        if (owned) {
-          statusText = enabled ? '✅ ON' : '❌ OFF';
-          statusColor = enabled ? '#6BCB77' : '#FF6B6B';
-        } else if (upg.unlockDist) {
-          var progress = Math.min(bestDist, upg.unlockDist);
-          statusText = '📏 ' + progress.toLocaleString() + ' / ' + upg.unlockDist.toLocaleString() + ' m';
-          statusColor = '#7EB3FF';
-        } else {
-          statusText = '🏆 ' + upg.cost + ' wins';
-          statusColor = '#FFD93D';
-        }
-        card.innerHTML = '<div style="font-size:36px;">' + upg.icon + '</div>' +
-          '<div style="color:white; font-weight:bold; font-size:14px; margin-top:4px;">' + upg.name + '</div>' +
-          '<div style="color:#aaa; font-size:12px;">' + upg.desc + '</div>' +
-          '<div style="color:' + statusColor + '; font-size:13px; font-weight:bold; margin-top:6px;">' + statusText + '</div>';
-
-        card.addEventListener('mouseenter', function() { card.style.transform = 'scale(1.05)'; });
-        card.addEventListener('mouseleave', function() { card.style.transform = 'scale(1)'; });
-
-        if (owned) {
-          // Toggle on/off
-          card.addEventListener('click', function() {
-            var idx = enabledUpgrades.indexOf(upg.id);
-            if (idx !== -1) {
-              enabledUpgrades.splice(idx, 1);
-            } else {
-              enabledUpgrades.push(upg.id);
-            }
-            buildUpgradeCards();
-            buildCharGrid();
-            buildBiomeGrid();
-          });
-        } else {
-          // Purchase (or distance-locked)
-          card.addEventListener('click', function() {
-            if (upg.unlockDist) return; // distance-locked, can't buy
-            if (raceWins >= upg.cost) {
-              raceWins -= upg.cost;
-              purchasedUpgrades.push(upg.id);
-              enabledUpgrades.push(upg.id);  // enabled by default when bought
-              buildUpgradeCards();
-              buildCharGrid();
-              buildBiomeGrid();
-            }
-          });
-        }
-        upgradeGrid.appendChild(card);
-      });
-
-      // "All" / "Some" toggle button
-      if (!showAllUpgrades) {
-        const allBtn = document.createElement('button');
-        allBtn.className = 'big-button';
-        allBtn.style.cssText = 'background: linear-gradient(to bottom, #FFD93D, #E8A817); color: #333; margin-top: 12px; font-size: 18px; padding: 10px 30px; width: auto;';
-        allBtn.textContent = '📦 All Upgrades (' + (UPGRADES.length - DEFAULT_UPGRADE_COUNT) + ' more)';
-        allBtn.addEventListener('click', function() {
-          showAllUpgrades = true;
-          upgradesPanel.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; max-width:100%; background:rgba(0,0,0,0.95); border-radius:0; padding:20px; z-index:9999; overflow-y:auto; text-align:center; display:block;';
-          buildUpgradeCards();
-        });
-        upgradeGrid.appendChild(allBtn);
-      } else {
-        const someBtn = document.createElement('button');
-        someBtn.className = 'big-button';
-        someBtn.style.cssText = 'background: linear-gradient(to bottom, #888, #666); color: white; margin-top: 12px; font-size: 18px; padding: 10px 30px; width: auto;';
-        someBtn.textContent = '🔽 Show Less';
-        someBtn.addEventListener('click', function() {
-          showAllUpgrades = false;
-          upgradesPanel.style.cssText = 'background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-top: 15px; width: 90%; max-width: 500px; text-align: center; display:block;';
-          buildUpgradeCards();
-        });
-        upgradeGrid.appendChild(someBtn);
-      }
-    }
-
-    upgradesBtn.addEventListener('click', function() {
-      buildUpgradeCards();
-      upgradesPanel.style.display = 'block';
-      upgradesBtn.style.display = 'none';
-    });
-
-    closeUpgradesBtn.addEventListener('click', function() {
-      upgradesPanel.style.cssText = 'display:none; background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-top: 15px; width: 90%; max-width: 500px; text-align: center;';
-      upgradesBtn.style.display = '';
-      showAllUpgrades = false;
-    });
-
-
-    // Patch boost with all speed upgrades + slow decay
-    const _origBoost = boost;
-    boost = function() {
-      if (!gameRunning) return;
-      let tapAmount = 25;
-      if (enabledUpgrades.indexOf('speed1') !== -1) tapAmount += 5;
-      if (enabledUpgrades.indexOf('speed2') !== -1) tapAmount += 10;
-      // Double Tap: each tap counts as 2
-      if (enabledUpgrades.indexOf('dbtap') !== -1) tapAmount *= 2;
-      playerBoost += tapAmount;
-
-      playerEl.classList.remove('boosting', 'running');
-      void playerEl.offsetWidth;
-      playerEl.classList.add('boosting');
-
-      setTimeout(function() {
-        if (gameRunning) {
-          playerEl.classList.remove('boosting');
-          playerEl.classList.add('running');
-        }
-      }, 250);
-
-      speedHint.style.display = 'none';
-    };
-
-    // Patch initiateStart to apply time, speed, and head start upgrades
-    const _origInitiateStart = initiateStart;
-    initiateStart = function() {
-      _origInitiateStart();
-    };
-
-    // Patch startRace to apply upgrades after race begins
-    const _originalStartRace2 = startRace;
-    startRace = function() {
-      _originalStartRace2();
-
-      // Time upgrades
-      if (enabledUpgrades.indexOf('time1') !== -1) timeLeft = 18;
-      if (enabledUpgrades.indexOf('time2') !== -1) timeLeft = 22;
-
-      // Top speed upgrades
-      let spdBonus = 0;
-      if (enabledUpgrades.indexOf('topspd1') !== -1) spdBonus += 15;
-      if (enabledUpgrades.indexOf('topspd2') !== -1) spdBonus += 20;
-      if (spdBonus > 0) {
-        playerTargetSpeed = Math.min(playerTargetSpeed + spdBonus, PLAYER_MAX_SPD + spdBonus);
-      }
-
-      // Head start
-      if (enabledUpgrades.indexOf('head1') !== -1) {
-        playerDist = 50;
-      }
-
-      // Turbo Start — burst of speed at race start
-      if (enabledUpgrades.indexOf('turbo') !== -1) {
-        playerBoost = 80;
-      }
-
-      // Lucky Start — 50% chance of a big boost
-      if (enabledUpgrades.indexOf('lucky') !== -1) {
-        if (Math.random() < 0.5) {
-          playerBoost += 60;
-          var luckyMsg = document.createElement('div');
-          luckyMsg.style.cssText = 'position:fixed; top:20%; left:50%; transform:translateX(-50%); color:#6BCB77; font-size:36px; font-weight:bold; z-index:9999; text-shadow:0 0 20px rgba(107,203,119,0.8);';
-          luckyMsg.textContent = '🍀 Lucky Start!';
-          document.body.appendChild(luckyMsg);
-          setTimeout(function() { luckyMsg.remove(); }, 1500);
-        }
-      }
-
-      // Big Mode — make player bigger
-      if (enabledUpgrades.indexOf('bigmode') !== -1) {
-        if (playerEl.classList.contains('runner-emoji')) {
-          playerEl.style.fontSize = '120px';
-        } else {
-          playerEl.style.width = '140px';
-          playerEl.style.height = '140px';
-        }
-      }
-
-      // Gold Skin — golden glow
-      if (enabledUpgrades.indexOf('gold') !== -1) {
-        playerEl.style.filter = 'drop-shadow(0 0 12px gold) drop-shadow(0 0 25px #FFD93D) brightness(1.2) sepia(0.8) saturate(3) hue-rotate(10deg)';
-      }
-
-      // Slow decay — reduce decay rate
-      if (enabledUpgrades.indexOf('decay1') !== -1) {
-        // Will be checked in game loop patch
-      }
-
-      timerEl.textContent = timeLeft.toFixed(1) + 's';
-    };
-
-    // Patch game loop for upgrades
-    const _origGameLoop = gameLoop;
-    gameLoop = function(timestamp) {
-      var dt = Math.min((timestamp - lastFrame) / 1000, 0.1);
-
-      // Slow Decay: halve the decay
-      if (enabledUpgrades.indexOf('decay1') !== -1) {
-        if (playerBoost > 0) {
-          playerBoost += 60 * dt;
-        }
-      }
-
-      // Steady Runner: smoother speed changes (reduce speed wobble)
-      if (enabledUpgrades.indexOf('steady') !== -1) {
-        playerBaseSpeed += (playerTargetSpeed - playerBaseSpeed) * 0.02;
-      }
-
-      // Draft Boost: go faster when near an NPC
-      if (enabledUpgrades.indexOf('draft') !== -1 && gameRunning) {
-        var drafting = false;
-        npcs.forEach(function(n) {
-          var gap = Math.abs(n.dist - playerDist);
-          if (gap < 200) drafting = true;
-        });
-        if (drafting) {
-          playerBoost += 30 * dt;
-        }
-      }
-
-      // Second Wind: auto-boost in last 3 seconds
-      if (enabledUpgrades.indexOf('second') !== -1 && gameRunning) {
-        if (timeLeft <= 3) {
-          playerBoost += 40 * dt;
-        }
-      }
-
-      // Trail Effect: spawn trail particles behind player
-      if (enabledUpgrades.indexOf('trail') !== -1 && gameRunning && playerEl) {
-        if (!gameLoop._trailTimer) gameLoop._trailTimer = 0;
-        gameLoop._trailTimer += dt;
-        if (gameLoop._trailTimer > 0.03) {
-          gameLoop._trailTimer = 0;
-          var px = parseFloat(playerEl.style.left) || 80;
-          var py = parseFloat(playerEl.style.bottom) || 10;
-          var colors = ['#FFD93D', '#FF6B6B', '#6BCB77', '#C084FC', '#7EB3FF', '#FF9F43', '#EE5A24', '#FDA7DF'];
-          // Spawn 3 particles per tick in a spread pattern
-          for (var ti = 0; ti < 3; ti++) {
-            var trail = document.createElement('div');
-            var color = colors[Math.floor(Math.random() * colors.length)];
-            var size = 30 + Math.random() * 40;
-            var offsetX = -10 + Math.random() * -30;
-            var offsetY = -2 + Math.random() * 4;
-            var isStarShape = Math.random() < 0.4;
-            var shape = isStarShape ? '' : 'border-radius:50%;';
-            var content = isStarShape ? '✨' : '';
-            trail.textContent = content;
-            trail.style.cssText = 'position:absolute; left:' + (px + offsetX) + 'px; bottom:' + (py + offsetY) + '%;' +
-              ' width:' + size + 'px; height:' + size + 'px; ' + shape +
-              ' background:' + (isStarShape ? 'transparent' : color) + ';' +
-              ' font-size:' + (size * 0.8) + 'px; line-height:' + size + 'px; text-align:center;' +
-              ' opacity:0.9; z-index:4; pointer-events:none;' +
-              ' box-shadow:' + (isStarShape ? 'none' : '0 0 ' + (size * 0.6) + 'px ' + color + ', 0 0 ' + (size * 0.3) + 'px white') + ';' +
-              ' transition: opacity 0.6s ease-out, transform 0.6s ease-out;';
-            game.appendChild(trail);
-            (function(t) {
-              setTimeout(function() { t.style.opacity = '0'; t.style.transform = 'scale(0.1) translateX(-40px)'; }, 30);
-              setTimeout(function() { t.remove(); }, 700);
-            })(trail);
-          }
-        }
-      }
-
-      // Racecar Roadway: obstacles, NPC lane dodging, player-NPC collisions
-      if (gameRunning && isRoadway()) {
-        obstacleTimer += dt;
-        // Spawn a new obstacle every 1.2-2.5 seconds
-        if (obstacleTimer > 1.2 + Math.random() * 1.3) {
-          obstacleTimer = 0;
-          spawnObstacle();
-        }
-
-        // NPC lane dodging AI — check for upcoming obstacles and switch lanes
-        npcs.forEach(function(n) {
-          n.laneChangeTimer -= dt;
-          if (n.laneChangeTimer > 0) return;
-          // Check if any obstacle is in their lane and coming toward them
-          var npcX = parseFloat(n.el.style.left) || 80;
-          var shouldDodge = false;
-          obstacles.forEach(function(obs) {
-            if (obs.lane === n.lane && obs.x > npcX && obs.x - npcX < 300) {
-              shouldDodge = true;
-            }
-          });
-          if (shouldDodge) {
-            // Pick a random adjacent lane that's safer
-            var safeLanes = [];
-            if (n.lane > 0) safeLanes.push(n.lane - 1);
-            if (n.lane < LANE_COUNT - 1) safeLanes.push(n.lane + 1);
-            // Prefer lanes without obstacles
-            var bestLane = safeLanes[Math.floor(Math.random() * safeLanes.length)];
-            n.lane = bestLane;
-            n.el.style.bottom = laneBottom(n.lane) + '%';
-            n.labelEl.style.bottom = (laneBottom(n.lane) + 7) + '%';
-            n.laneChangeTimer = 0.5; // cooldown before next lane change
-          }
-        });
-
-        // Move obstacles and check collisions
-        var playerX = parseFloat(playerEl.style.left) || 80;
-        for (var oi = obstacles.length - 1; oi >= 0; oi--) {
-          var obs = obstacles[oi];
-          obs.x -= (200 + playerDist * 0.02) * dt;
-          obs.el.style.left = obs.x + 'px';
-
-          // Player collision — same lane and close x
-          if (!obs.hitPlayer && obs.lane === playerLane && Math.abs(obs.x - playerX) < 40) {
-            obs.hitPlayer = true;
-            obs.el.style.transition = 'opacity 0.3s';
-            obs.el.style.opacity = '0.3';
-            playerBoost = Math.max(playerBoost - 50, 0);
-            playerBaseSpeed = Math.max(playerBaseSpeed * 0.5, PLAYER_MIN_SPD * 0.5);
-            var warn = document.createElement('div');
-            warn.style.cssText = 'position:fixed; top:30%; left:50%; transform:translateX(-50%); color:#FF6B6B; font-size:32px; font-weight:bold; z-index:9999; text-shadow:0 0 15px rgba(255,107,107,0.8);';
-            warn.textContent = '💥 HIT!';
-            document.body.appendChild(warn);
-            setTimeout(function() { warn.remove(); }, 800);
-          }
-
-          // NPC collision with obstacles — same lane and close x
-          npcs.forEach(function(n, ni) {
-            var npcX = parseFloat(n.el.style.left) || 80;
-            if (obs.hitNpcs.indexOf(ni) === -1 && obs.lane === n.lane && Math.abs(obs.x - npcX) < 40) {
-              obs.hitNpcs.push(ni);
-              n.speed *= 0.4; // big slowdown for NPC
-              n.dist -= 30;   // knock them back a bit
-            }
-          });
-
-          // Remove off-screen obstacles
-          if (obs.x < -80) {
-            obs.el.remove();
-            obstacles.splice(oi, 1);
-          }
-        }
-
-        // Player-NPC collisions — same lane and close x = both slow down
-        npcs.forEach(function(n) {
-          if (n.lane === playerLane) {
-            var npcX = parseFloat(n.el.style.left) || 0;
-            if (Math.abs(npcX - playerX) < 45) {
-              // Slow both down
-              playerBoost = Math.max(playerBoost - 20, 0);
-              playerBaseSpeed = Math.max(playerBaseSpeed * 0.7, PLAYER_MIN_SPD * 0.6);
-              n.speed *= 0.5;
-              n.dist -= 15;
-            }
-          }
-        });
-      }
-
-      _origGameLoop(timestamp);
-    };
-
-    // Track wins — patch endGame and auto-refresh upgrades panel
-    const _origEndGame = endGame;
-    endGame = function(place, placeText) {
-      if (place === 1) {
-        raceWins += (enabledUpgrades.indexOf('winmult') !== -1) ? 3 : 1;
-      }
-      _origEndGame(place, placeText);
-      // Auto-refresh upgrades if panel is open
-      if (upgradesPanel.style.display !== 'none') {
-        buildUpgradeCards();
-      }
-    };
   </script>
 
 </body>
