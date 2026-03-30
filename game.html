@@ -730,9 +730,6 @@
       localStorage.setItem('wrg_volume', gameVolume);
       if (homeMusic)  homeMusic.volume  = gameVolume;
       if (biomeMusic) biomeMusic.volume = gameVolume;
-      clickSound.volume = gameVolume;
-      // If music should be playing but isn't (e.g. was blocked), try starting it
-      if (!racingPhase && (!homeMusic || homeMusic.paused)) startHomeMusic();
     }
 
     volumeSlider.addEventListener('input',  applyVolumeToAll);
@@ -744,9 +741,10 @@
       return audio;
     }
 
-    // Click sound on any click
+    // Click sound — don't play on slider/input interactions
     const clickSound = new Audio('Sounds/click.mp3');
-    document.addEventListener('click', function() {
+    document.addEventListener('click', function(e) {
+      if (e.target.tagName === 'INPUT') return;
       clickSound.volume = gameVolume;
       clickSound.currentTime = 0;
       clickSound.play().catch(function() {});
@@ -755,23 +753,23 @@
     // Start home screen music
     function startHomeMusic() {
       if (racingPhase) return;
-      if (homeMusic && !homeMusic.paused) return;
       if (!homeMusic) {
         homeMusic = new Audio('Sounds/home_screen.mp3');
         homeMusic.loop = true;
-        homeMusic.volume = gameVolume;
       }
-      homeMusic.play().catch(function() {});
+      homeMusic.volume = gameVolume;
+      if (homeMusic.paused) {
+        homeMusic.play().catch(function() {});
+      }
     }
     function stopHomeMusic() {
       if (homeMusic) { homeMusic.pause(); homeMusic = null; }
     }
 
-    // Start home music as soon as user interacts with the page
+    // Start home music on any user interaction (keep retrying until it works)
     startHomeMusic();
-    ['click', 'keydown', 'touchstart'].forEach(function(evt) {
-      document.addEventListener(evt, function() { startHomeMusic(); }, { once: true });
-    });
+    document.addEventListener('click',      function() { startHomeMusic(); });
+    document.addEventListener('touchstart', function() { startHomeMusic(); }, { passive: true });
     let lastFrame    = 0;
     let worldOffset  = 0;
     let spaceHeld    = false;
