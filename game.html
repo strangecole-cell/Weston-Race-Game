@@ -702,7 +702,7 @@
     let biomeMusic   = null;
     let homeMusic    = null;
     let racingPhase  = false;
-    let gameVolume   = 1.0;
+    let gameVolume   = parseFloat(localStorage.getItem('wrg_volume') || '1.0');
 
     // ===== SETTINGS =====
     const settingsBtn      = document.getElementById('settings-btn');
@@ -710,6 +710,10 @@
     const closeSettingsBtn = document.getElementById('close-settings-btn');
     const volumeSlider     = document.getElementById('volume-slider');
     const volumeLabel      = document.getElementById('volume-label');
+
+    // Initialize slider to saved volume
+    volumeSlider.value = Math.round(gameVolume * 100);
+    volumeLabel.textContent = volumeSlider.value + '%';
 
     settingsBtn.addEventListener('click', function() {
       settingsPanel.style.display = 'block';
@@ -720,13 +724,19 @@
       settingsBtn.style.display = '';
     });
 
-    volumeSlider.addEventListener('input', function() {
+    function applyVolumeToAll() {
       gameVolume = volumeSlider.value / 100;
       volumeLabel.textContent = volumeSlider.value + '%';
-      // Apply to any currently playing audio
-      if (homeMusic) homeMusic.volume = gameVolume;
+      localStorage.setItem('wrg_volume', gameVolume);
+      if (homeMusic)  homeMusic.volume  = gameVolume;
       if (biomeMusic) biomeMusic.volume = gameVolume;
-    });
+      clickSound.volume = gameVolume;
+      // If music should be playing but isn't (e.g. was blocked), try starting it
+      if (!racingPhase && (!homeMusic || homeMusic.paused)) startHomeMusic();
+    }
+
+    volumeSlider.addEventListener('input',  applyVolumeToAll);
+    volumeSlider.addEventListener('change', applyVolumeToAll);
 
     // Helper to apply volume to any new audio
     function applyVolume(audio) {
