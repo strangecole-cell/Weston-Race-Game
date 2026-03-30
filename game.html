@@ -735,7 +735,7 @@
       if (racingPhase) return;
       if (homeMusic && !homeMusic.paused) return;
       if (!homeMusic) {
-        homeMusic = new Audio('Sounds/home_screen.wav');
+        homeMusic = new Audio('Sounds/home_screen.mp3');
         homeMusic.loop = true;
         homeMusic.volume = gameVolume;
       }
@@ -942,7 +942,7 @@
       var BEEP4 = 2010;   // ms when long beep (GO!) hits
       var RACE  = 2700;   // ms when race starts
 
-      const countdownSound = applyVolume(new Audio('Sounds/start_of_race_1_2_3_go.wav'));
+      const countdownSound = applyVolume(new Audio('Sounds/start_of_race_1_2_3_go.mp3'));
       // Start sound first, then show visuals after head start
       countdownSound.play().then(function() {
         setTimeout(function() {
@@ -1225,7 +1225,7 @@
       finalPlaceEl.textContent = placeText + ' Place!';
       finalPlaceEl.style.color = place === 1 ? '#6BCB77' : place === 2 ? '#FFD93D' : '#FF6B6B';
       if (place === 1) {
-        const yaySound = applyVolume(new Audio('Sounds/yay_FunSpot.wav'));
+        const yaySound = applyVolume(new Audio('Sounds/yay_FunSpot.mp3'));
         yaySound.play().catch(function() {});
       }
       finalDistEl.textContent  = 'Distance: ' + dist + 'm';
