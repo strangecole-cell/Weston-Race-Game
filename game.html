@@ -427,6 +427,13 @@
 
     <!-- Hint text -->
     <div id="speed-hint">Tap SPACE or CLICK for a speed boost! 💨</div>
+    <script>
+      // Update hint text for mobile/touch devices
+      if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        document.getElementById('speed-hint').textContent = '👆 TAP THE SCREEN for a speed boost!';
+        document.getElementById('controls-sub').textContent = '👆 TAP THE SCREEN for speed boosts — 15 seconds!';
+      }
+    </script>
 
     <!-- Countdown overlay -->
     <div id="countdown"><span>3</span></div>
@@ -468,7 +475,7 @@
       </div>
 
       <button class="big-button" id="upgrades-btn" style="background: linear-gradient(to bottom, #C084FC, #9333EA); color: white; margin-top: 10px;">⬆ Upgrades</button>
-      <p class="sub">Tap SPACE or CLICK for speed boosts — 15 seconds!</p>
+      <p class="sub" id="controls-sub">Tap SPACE or CLICK for speed boosts — 15 seconds!</p>
 
       <!-- Upgrades Panel (hidden by default) -->
       <div id="upgrades-panel" style="display:none; background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; margin-top: 15px; width: 90%; max-width: 500px; text-align: center;">
@@ -665,10 +672,15 @@
 
     let selectedDifficulty = 'medium';
 
+    // On touch devices, reduce NPC speed and increase tap boost
+    const IS_MOBILE = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    const MOBILE_NPC_MULT = IS_MOBILE ? 0.8 : 1.0;
+    const TAP_BOOST_MOBILE = IS_MOBILE ? 35 : 25;
+
     // Build NPC_DEFS from base + difficulty
     let NPC_DEFS = [];
     function updateNPCDefs() {
-      const mult = DIFFICULTY[selectedDifficulty];
+      const mult = DIFFICULTY[selectedDifficulty] * MOBILE_NPC_MULT;
       NPC_DEFS = NPC_BASE.map(function(npc) {
         return {
           name: npc.name, emoji: npc.emoji, color: npc.color,
@@ -1488,7 +1500,7 @@
     const _origBoost = boost;
     boost = function() {
       if (!gameRunning) return;
-      let tapAmount = 25;
+      let tapAmount = TAP_BOOST_MOBILE;
       if (enabledUpgrades.indexOf('speed1') !== -1) tapAmount += 5;
       if (enabledUpgrades.indexOf('speed2') !== -1) tapAmount += 10;
       // Double Tap: each tap counts as 2
